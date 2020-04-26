@@ -1,4 +1,4 @@
-# print(str(bool(int(float(str(10.13423))))))
+print(str(bool(int(float(str(10.13423))))))
 
 
 
