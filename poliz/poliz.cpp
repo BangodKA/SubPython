@@ -71,7 +71,7 @@ class PolymorphicValue {
     operator std::string() const { CheckIs(Str); return str_; }
     operator int() const { CheckIs(Int); return integral_; }
     operator double() const { CheckIs(Real); return real_; }
-    operator bool() const { CheckIs(Logic); return logic_; }
+    operator bool() const;
 
 	ValueType type_;
     
@@ -84,6 +84,22 @@ class PolymorphicValue {
 
     void CheckIs(ValueType type) const;
 };
+
+PolymorphicValue::operator bool() const {
+	if (type_ == Logic) {
+		return logic_;
+	}
+	else if (type_ == Int) {
+		return integral_;
+	}
+	else if (type_ == Str) {
+		if (str_ == "") {
+			return false;
+		}
+		return true;
+	}
+	return real_;	
+}
 
 void PolymorphicValue::CheckIs(ValueType type) const {
 	if (type != type_) {
@@ -328,14 +344,12 @@ struct IfOperation : GoOperation {
 };
 
 void IfOperation::Do(Context& context) const {
-  // извлекаем операнд
-  StackValue value = context.stack.top();
+  	StackValue value = context.stack.top();
 //   context.stack.pop();
 
-  // выполняем переход по лжи
-  if (!value.Get()) {
-    GoOperation::Do(context);
-  }
+	if (!value.Get()) {
+		GoOperation::Do(context);
+	}
 }
 
 struct PopOperation : Operation {

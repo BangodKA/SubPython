@@ -51,6 +51,8 @@ class Parser{
 	std::stack<OperationIndex> if_indices;
 	std::stack<ValueType> operand_types;
 	std::stack<Lexeme::LexemeType> type_cast;
+	std::stack<const execution::OperationIndex> loop_starts;
+	std::stack<const execution::OperationIndex> breaks;
 	std::unordered_map<VariableName, ValueType> var_types;
 
 	void PostOp(std::stack<ValueType> &operand_types, ValueType op1, ValueType op2 = Int);
@@ -172,12 +174,11 @@ int Parser::IndentCounter() {
 int Parser::Block(Context& context) {
 	int next_block_indent = -1;
 	if (lexer_.HasLexeme()) { 
-		if (lexer_.PeekLexeme().type == Lexeme::For || 
-			lexer_.PeekLexeme().type == Lexeme::If || 
-			lexer_.PeekLexeme().type == Lexeme::While || 
-			lexer_.PeekLexeme().type == Lexeme::ElIf ||
-			lexer_.PeekLexeme().type == Lexeme::Else) {
-			Lexeme lex = lexer_.TakeLexeme();
+		const Lexeme lex = lexer_.PeekLexeme();
+		if (lex.type == Lexeme::For || lex.type == Lexeme::If || 
+			lex.type == Lexeme::While || lex.type == Lexeme::ElIf ||
+			lex.type == Lexeme::Else) {
+			lexer_.TakeLexeme();
 			switch (lex.type) {
 			case Lexeme::For:
 				next_block_indent = ForBlock(context);
@@ -209,6 +210,26 @@ int Parser::Block(Context& context) {
 				break;
 			case Lexeme::Identifier:
 				Assign(context);
+				break;
+			case Lexeme::Continue:
+				if (!loop_starts.empty()) {
+					operations.emplace_back(new execution::GoOperation(loop_starts.top()));
+					lexer_.TakeLexeme();
+				}
+				else {
+					throw std::runtime_error("SyntaxError: 'continue' not properly in loop");
+				}
+				break;
+			case Lexeme::Break:
+				if (!loop_starts.empty()) {
+					const execution::OperationIndex break_index = operations.size();
+					operations.emplace_back(nullptr);
+					breaks.emplace(break_index);
+					lexer_.TakeLexeme();
+				}
+				else {
+					throw std::runtime_error("SyntaxError: 'continue' not properly in loop");
+				}
 				break;
 			default:
 				Expression(context);
@@ -246,6 +267,7 @@ int Parser::ForBlock(Context& context) {
 			if_indices.emplace(go_index);
 
 			const execution::OperationIndex label_if = operations.size();
+			loop_starts.emplace(label_if);
 
 			operations.emplace_back(new execution::VariableOperation(lex.value));
 			operations.emplace_back(new execution::AddOneOperation(lex.value));
@@ -254,7 +276,7 @@ int Parser::ForBlock(Context& context) {
 			operations[go_index].reset(new execution::GoOperation(label_new));
 
 			operations.emplace_back(new execution::VariableOperation(lex.value));
-			operations.emplace_back(new execution::VariableOperation("edge"));
+			operations.emplace_back(new execution::VariableOperation("edge" + std::to_string(loop_starts.size() - 1)));
 
 			operand_types.emplace(Int);
 			operand_types.emplace(Int);
@@ -268,11 +290,20 @@ int Parser::ForBlock(Context& context) {
 
 			if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::Colon) {
 				lexer_.TakeLexeme();
+				int breaks_amount = breaks.size();
+
 				int next_block_indent = InnerBlock(context);
+				loop_starts.pop();
 
 				operations.emplace_back(new execution::GoOperation(label_if));
 
 				const execution::OperationIndex label_next = operations.size();
+
+				while (breaks.size() != breaks_amount) {
+					operations[breaks.top()].reset(new execution::GoOperation(label_next));
+					breaks.pop();
+				}
+
 				operations[if_index].reset(new execution::IfOperation(label_next));
 				
 				if_indices.pop();
@@ -291,9 +322,10 @@ void Parser::Range(Context& context) {
 		lexer_.TakeLexeme();
 		if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::LeftParenthesis) {
 			lexer_.TakeLexeme();
-			Interval(context);	
-			operations.emplace_back(new execution::AssignOperation("edge"));
-			var_types.insert_or_assign("edge", operand_types.top());
+			Interval(context);
+			std::string edge = "edge" + std::to_string(loop_starts.size());	
+			operations.emplace_back(new execution::AssignOperation(edge));
+			var_types.insert_or_assign(edge, operand_types.top());
 			if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::RightParenthesis) {
 				lexer_.TakeLexeme();
 				return;
@@ -302,7 +334,7 @@ void Parser::Range(Context& context) {
 	}
 
 	throw std::runtime_error(
-		std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ": " + "invalid syntax: wrong cycle field");
+		std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ": " + "invalid syntax: wrong loop field");
 }
 
 void Parser::Interval(Context& context) {
@@ -436,6 +468,7 @@ int Parser::ElseBlock(Context& context) {
 // While
 int Parser::WhileBlock(Context& context) {
 	const execution::OperationIndex label_if = operations.size();
+	loop_starts.emplace(label_if);
 
 	Expression(context);
 
@@ -445,11 +478,22 @@ int Parser::WhileBlock(Context& context) {
 
 	if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::Colon) {
 		lexer_.TakeLexeme();
+
+		int breaks_amount = breaks.size();
+
 		int next_block_indent = InnerBlock(context);
+
+		loop_starts.pop();
 
 		operations.emplace_back(new execution::GoOperation(label_if));
 
+
 		const execution::OperationIndex label_next = operations.size();
+		while (breaks.size() != breaks_amount) {
+			operations[breaks.top()].reset(new execution::GoOperation(label_next));
+			breaks.pop();
+		}
+
   		operations[if_index].reset(new execution::IfOperation(label_next));
 		
 		if_indices.pop();
@@ -472,6 +516,26 @@ int Parser::InnerBlock(Context& context) {
 				break;
 			case Lexeme::Identifier:
 				Assign(context);
+				break;
+			case Lexeme::Continue:
+				if (!loop_starts.empty()) {
+					operations.emplace_back(new execution::GoOperation(loop_starts.top()));
+					lexer_.TakeLexeme();
+				}
+				else {
+					throw std::runtime_error("SyntaxError: 'continue' not properly in loop");
+				}
+				break;
+			case Lexeme::Break:
+				if (!loop_starts.empty()) {
+					const execution::OperationIndex break_index = operations.size();
+					operations.emplace_back(nullptr);
+					breaks.emplace(break_index);
+					lexer_.TakeLexeme();
+				}
+				else {
+					throw std::runtime_error("SyntaxError: 'continue' not properly in loop");
+				}
 				break;
 			default:
 				Expression(context);
@@ -514,6 +578,12 @@ void Parser::Print(Context& context) {
 	lexer_.TakeLexeme();
 	if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::LeftParenthesis) {
 		lexer_.TakeLexeme();
+		if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::RightParenthesis) {
+			lexer_.TakeLexeme();
+			operations.emplace_back(new execution::ValueOperation(""));
+			operations.emplace_back(kUnaries.at(std::make_tuple(Lexeme::Print, Str)));
+			return;
+		}
 		Expression(context);
 		
 		if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::RightParenthesis) {

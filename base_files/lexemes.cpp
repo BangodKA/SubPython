@@ -22,11 +22,10 @@ struct Lexeme {
         Int, //
         Str, //
         Float, //
-        None,
         While,  //
         For, //
-        Break,
-        Continue,
+        Break, //
+        Continue, //
         If, //
         Else, //
         ElIf, //

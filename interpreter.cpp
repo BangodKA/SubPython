@@ -98,9 +98,6 @@ std::ostream& operator<<(std::ostream& out, const Lexeme& lex) {
 	case Lexeme::Str:
 		out << "str()";
 		break;
-	case Lexeme::None:
-		out << "None";
-		break;
 	case Lexeme::While:
 		out << "while";
 		break;
@@ -149,7 +146,7 @@ int main(int argc, char* argv[]) {
     	std::cerr << "expected argument" << std::endl;
     	return 1;
   	}
-	  
+
 	try {
 		std::ifstream input(argv[1]);
 

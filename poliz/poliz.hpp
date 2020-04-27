@@ -68,7 +68,7 @@ class PolymorphicValue {
     operator std::string() const { CheckIs(Str); return str_; }
     operator int() const { CheckIs(Int); return integral_; }
     operator double() const { CheckIs(Real); return real_; }
-    operator bool() const { CheckIs(Logic); return logic_; }
+    operator bool() const;
     
   private:
 	ValueType type_;

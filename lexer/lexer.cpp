@@ -120,7 +120,6 @@ const std::unordered_map<std::string, Lexeme::LexemeType> Lexer::ReservedWords {
     {"int", Lexeme::Int},
 	{"str", Lexeme::Str},
 	{"float", Lexeme::Float},
-	{"None", Lexeme::None},
 	{"while", Lexeme::While}, 
 	{"for", Lexeme::For},
 	{"break", Lexeme::Break},
