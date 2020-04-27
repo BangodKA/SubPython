@@ -64,8 +64,8 @@ class Parser{
 
 	// For
 	int ForBlock(Context& context);
-	void Range();
-	void Interval();
+	void Range(Context& context);
+	void Interval(Context& context);
 
 	// If
 	int IfBlock(Context& context);
@@ -232,10 +232,15 @@ int Parser::Block(Context& context) {
 
 int Parser::ForBlock(Context& context) {
 	if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::Identifier) {
-		lexer_.TakeLexeme();
+		Lexeme lex = lexer_.TakeLexeme();
+		// operations.emplace_back(new execution::VariableOperation(lex));
 		if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::In) {
 			lexer_.TakeLexeme();
-			Range();
+			Range(context);
+
+			operations.emplace_back(new execution::AssignOperation(lex.value));
+			var_types.insert_or_assign(lex.value, operand_types.top());
+
 			if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::Colon) {
 				lexer_.TakeLexeme();
 				int next_block_indent = InnerBlock(context);
@@ -246,12 +251,14 @@ int Parser::ForBlock(Context& context) {
 	throw std::runtime_error (std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ": " + "invalid syntax");
 }
 
-void Parser::Range() {
+void Parser::Range(Context& context) {
 	if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::Range) {
 		lexer_.TakeLexeme();
 		if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::LeftParenthesis) {
 			lexer_.TakeLexeme();
-			Interval();	
+			Interval(context);	
+			operations.emplace_back(new execution::AssignOperation("edge"));
+			var_types.insert_or_assign("edge", operand_types.top());
 			if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::RightParenthesis) {
 				lexer_.TakeLexeme();
 				return;
@@ -260,7 +267,10 @@ void Parser::Range() {
 	}
 
 	else if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::StringConst) {
-		lexer_.TakeLexeme();
+		Lexeme lexeme = lexer_.TakeLexeme();
+		operand_types.emplace(Str);
+		operations.emplace_back(new execution::ValueOperation(std::string(lexeme)));
+		// operations.emplace_back(new execution::AssignOperation(lexe))
 		return;
 	}
 
@@ -268,17 +278,31 @@ void Parser::Range() {
 		std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ": " + "invalid syntax: wrong cycle field");
 }
 
-void Parser::Interval() {
+void Parser::Interval(Context& context) {
 	if (lexer_.HasLexeme() 
 		&& (lexer_.PeekLexeme().type == Lexeme::Identifier || lexer_.PeekLexeme().type == Lexeme::IntegerConst)) {
-			lexer_.TakeLexeme();
+			Lexeme lex = lexer_.TakeLexeme();
 			if (lexer_.HasLexeme() && lexer_.PeekLexeme().type != Lexeme::Comma) {
+				operand_types.emplace(Int);
+				operations.emplace_back(new execution::ValueOperation(0));
+				if (lex.type == Lexeme::IntegerConst) {
+					operand_types.emplace(Int);
+					operations.emplace_back(new execution::ValueOperation(int(lex)));
+				}
 				return;
 			}
-			lexer_.TakeLexeme();
+			if (lex.type == Lexeme::IntegerConst) {
+				operand_types.emplace(Int);
+				operations.emplace_back(new execution::ValueOperation(int(lex)));
+			}
+			lex = lexer_.TakeLexeme();
 			if (lexer_.HasLexeme() 
 				&& (lexer_.PeekLexeme().type == Lexeme::Identifier || lexer_.PeekLexeme().type == Lexeme::IntegerConst)) {
 					lexer_.TakeLexeme();
+					if (lex.type == Lexeme::IntegerConst) {
+						operand_types.emplace(Int);
+						operations.emplace_back(new execution::ValueOperation(int(lex)));
+					}
 					return;
 			}
 	}
@@ -442,25 +466,11 @@ void Parser::Print(Context& context) {
 
 void Parser::Assign(Context& context) {
 	Lexeme lex = lexer_.TakeLexeme();
-	auto val = context.variables.find(lex.value);
-	bool first_assign = true;
-	if (val != context.variables.end()) { 
-		operations.emplace_back(new execution::VariableOperation(lex.value));
-		
-		first_assign = false;
-	}
 	if (lexer_.HasLexeme()) {
 		if (lexer_.PeekLexeme().type == Lexeme::Assign) {
 			lexer_.TakeLexeme();
 			Expression(context);
-			if (first_assign) {
-				operations.emplace_back(new execution::AddVariableOperation(lex.value));
-			}
-			else {
-				operations.emplace_back(new execution::AssignOperation());
-			}
-
-			
+			operations.emplace_back(new execution::AssignOperation(lex.value));
 			var_types.insert_or_assign(lex.value, operand_types.top());
 			return;
 		} 

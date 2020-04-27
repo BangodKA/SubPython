@@ -147,8 +147,8 @@ struct VariableOperation : Operation {
   	const VariableName name_;
 };
 
-struct AddVariableOperation : Operation {
-  	AddVariableOperation(const VariableName& name): name_(name) {}
+struct AssignOperation : Operation {
+  	AssignOperation(const VariableName& name): name_(name) {}
 
   	void Do(Context& context) const final;
 
@@ -156,7 +156,7 @@ struct AddVariableOperation : Operation {
   	const VariableName name_;
 };
 
-struct AssignOperation : Operation {
+struct AddForVarOperation : Operation {
   	void Do(Context& context) const final;
 };
 
@@ -172,12 +172,6 @@ struct GoOperation : Operation {
 // Операция - условный переход по лжи
 struct IfOperation : GoOperation {
 	IfOperation(OperationIndex index): GoOperation(index) {}
-
-	void Do(Context& context) const final;
-};
-
-struct ElseOperation : GoOperation {
-	ElseOperation(OperationIndex index): GoOperation(index) {}
 
 	void Do(Context& context) const final;
 };

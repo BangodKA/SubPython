@@ -149,7 +149,7 @@ int main(int argc, char* argv[]) {
     	std::cerr << "expected argument" << std::endl;
     	return 1;
   	}
-	// int start = clock();
+	  
 	try {
 		std::ifstream input(argv[1]);
 
@@ -164,9 +164,7 @@ int main(int argc, char* argv[]) {
 			++context.operation_index;
 			operation->Do(context);
 		}
-		context.Show(std::cout); 
-		// int end = clock();
-		// std::cout << end - start << std::endl;
+		// context.Show(std::cout); 
     	return 0;
 	}
 	catch (CustomException& e) {

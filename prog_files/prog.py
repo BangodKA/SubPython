@@ -1,22 +1,44 @@
 print(str(bool(int(float(str(10.13423))))))
 
+i = 10
+print(i)
+# i = "dgff"
+# print(i)
 
+for i in "fsdfs":
+    print(i)
 
+# print(i)
 
-if True:
-    print(1)
-    if False:
-        print(2)
-    elif 10 < 123:
-        print(143)
-        if 21 * 3 > 0:
-            print(1)
-        else:
-            print(1 + 33)
-elif False:
-    print(4234)
-else:
-    print(123)
+# x = 10
+# print(x)
+# x = "fsdf"
+# print(x)
+# x = 12.42
+# print(x * 10 + 12)
+
+# if False:
+#     print(1)
+#     if False:
+#         print(2)
+#     elif 10 < 123:
+#         print(143)
+#         if 21 * 3 > 0:
+#             print(1)
+#         else:
+#             print(1 + 33)
+# elif False:
+#     print(4234)
+#     if False:
+#         print("EWR")
+#     else:
+#         print("fs")
+# else:
+#     print(123)
+
+# while x < 12:
+#     print(100)
+#     x = x + 1 +1
 
 # print(-(True + False))
 

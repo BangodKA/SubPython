@@ -259,8 +259,8 @@ void VariableOperation::Do(Context& context) const {
 }
 
 
-struct AddVariableOperation : Operation {
-  	AddVariableOperation(const VariableName& name): name_(name) {}
+struct AssignOperation : Operation {
+  	AssignOperation(const VariableName& name): name_(name) {}
 
   	void Do(Context& context) const final;
 
@@ -268,7 +268,7 @@ struct AddVariableOperation : Operation {
   	const VariableName name_;
 };
 
-void AddVariableOperation::Do(Context& context) const {
+void AssignOperation::Do(Context& context) const {
     StackValue value = context.stack.top();
     context.stack.pop();
 
@@ -276,16 +276,18 @@ void AddVariableOperation::Do(Context& context) const {
 }
 
 
-struct AssignOperation : Operation {
+struct AddForVarOperation : Operation {
   	void Do(Context& context) const final;
 };
 
-void AssignOperation::Do(Context& context) const {
+void AddForVarOperation::Do(Context& context) const {
 	StackValue op2 = context.stack.top();
 	context.stack.pop();
 
 	StackValue op1 = context.stack.top();
 	context.stack.pop();
+
+	context.variables[op1.Get()].reset(new Variable(op1.Get(), op2.Get()));
 
 	context.stack.push(op1.SetValue(op2));
 }
@@ -316,23 +318,6 @@ void IfOperation::Do(Context& context) const {
 
   // выполняем переход по лжи
   if (!value.Get()) {
-    GoOperation::Do(context);
-  }
-}
-
-struct ElseOperation : GoOperation {
-	ElseOperation(OperationIndex index): GoOperation(index) {}
-
-	void Do(Context& context) const final;
-};
-
-void ElseOperation::Do(Context& context) const {
-  // извлекаем операнд
-  StackValue value = context.stack.top();
-//   context.stack.pop();
-
-  // выполняем переход по лжи
-  if (value.Get()) {
     GoOperation::Do(context);
   }
 }

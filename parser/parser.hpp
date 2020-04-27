@@ -51,8 +51,8 @@ class Parser{
 
 	// For
 	int ForBlock(Context& context);
-	void Range();
-	void Interval();
+	void Range(Context& context);
+	void Interval(Context& context);
 
 	// If
 	int IfBlock(Context& context);
