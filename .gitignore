@@ -1,14 +1,11 @@
 .vscode
-fas.txt
 pol
 poliz_with_go.cpp
 polymorphic.cpp
-python_test.py
-Task.pdf
 test 
 test.cpp
 .DS_Store
 interpreter
-prog.py
-real_result.txt
-result.txt
+
+*.py
+*.txt
