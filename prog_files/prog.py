@@ -12,6 +12,9 @@ x = 10 +4
 for i in range(i, x):
     print(i)
 
+# for a in range(12, 21):
+#     print(a)
+
 # x = 10
 # print(x)
 # x = "fsdf"

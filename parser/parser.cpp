@@ -241,7 +241,17 @@ int Parser::ForBlock(Context& context) {
 			operations.emplace_back(new execution::AssignOperation(lex.value));
 			var_types.insert_or_assign(lex.value, operand_types.top());
 
+			const execution::OperationIndex go_index = operations.size();
+			operations.emplace_back(nullptr);
+			if_indices.emplace(go_index);
+
 			const execution::OperationIndex label_if = operations.size();
+
+			operations.emplace_back(new execution::VariableOperation(lex.value));
+			operations.emplace_back(new execution::AddOneOperation(lex.value));
+
+			const execution::OperationIndex label_new = operations.size();
+			operations[go_index].reset(new execution::GoOperation(label_new));
 
 			operations.emplace_back(new execution::VariableOperation(lex.value));
 			operations.emplace_back(new execution::VariableOperation("edge"));
@@ -259,9 +269,6 @@ int Parser::ForBlock(Context& context) {
 			if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::Colon) {
 				lexer_.TakeLexeme();
 				int next_block_indent = InnerBlock(context);
-
-				operations.emplace_back(new execution::VariableOperation(lex.value));
-				operations.emplace_back(new execution::AddOneOperation(lex.value));
 
 				operations.emplace_back(new execution::GoOperation(label_if));
 
@@ -293,14 +300,6 @@ void Parser::Range(Context& context) {
 			}
 		}
 	}
-
-	// else if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::StringConst) {
-	// 	Lexeme lexeme = lexer_.TakeLexeme();
-	// 	operand_types.emplace(Str);
-	// 	operations.emplace_back(new execution::ValueOperation(std::string(lexeme)));
-	// 	// operations.emplace_back(new execution::AssignOperation(lexe))
-	// 	return;
-	// }
 
 	throw std::runtime_error(
 		std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ": " + "invalid syntax: wrong cycle field");
