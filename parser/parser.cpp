@@ -704,52 +704,57 @@ void Parser::MultParts(Context& context) {
 }
 
 void Parser::Cast(Context& context) {
-	while (lexer_.HasLexeme()) {
+	if (lexer_.HasLexeme()) {
+		bool cast = false;
 		const Lexeme::LexemeType cast_type = lexer_.PeekLexeme().type;
-		if (cast_type != Lexeme::Bool && cast_type != Lexeme::Int &&
-			cast_type != Lexeme::Str && cast_type != Lexeme::Float) {
-			break;
-		}
-		type_cast.emplace(cast_type);
-		lexer_.TakeLexeme();
-		if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::LeftParenthesis) {
+		if (cast_type == Lexeme::Bool || cast_type == Lexeme::Int ||
+			cast_type == Lexeme::Str || cast_type == Lexeme::Float) {
+			cast = true;
+		// type_cast.emplace(cast_type);
 			lexer_.TakeLexeme();
-		}	
-		else {
-			throw std::runtime_error(std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ": " + 
-				"expected left parenthesis");
-		}
-	}
-	Members(context);
+			if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::LeftParenthesis) {
+				lexer_.TakeLexeme();
+				Expression(context);
+			}	
+			else {
+				throw std::runtime_error(std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ": " + 
+					"expected left parenthesis");
+			}
 
-	while (!type_cast.empty()) {
-		if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::RightParenthesis) {
-			lexer_.TakeLexeme();
-		}	
-		else {
-			throw std::runtime_error(std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ": " + 
-				"expected right parenthesis");
+
+			if (cast) {
+				if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::RightParenthesis) {
+					lexer_.TakeLexeme();
+				}	
+				else {
+					throw std::runtime_error(std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ": " + 
+						"expected right parenthesis");
+				}
+				ValueType op = operand_types.top();
+				operand_types.pop();
+				// Lexeme::LexemeType cast_to = type_cast.top();
+				// type_cast.pop();
+				operations.emplace_back(kUnaries.at(std::make_tuple(cast_type, op)));
+				switch (cast_type) {
+					case Lexeme::Bool:
+						operand_types.emplace(Logic);
+						break;
+					case Lexeme::Str:
+						operand_types.emplace(Str);
+						break;
+					case Lexeme::Int:
+						operand_types.emplace(Int);
+						break;
+					case Lexeme::Float:
+						operand_types.emplace(Real);
+						break;
+					default:
+						break;
+				}
+			}
 		}
-		ValueType op = operand_types.top();
-		operand_types.pop();
-		Lexeme::LexemeType cast_to = type_cast.top();
-		type_cast.pop();
-		operations.emplace_back(kUnaries.at(std::make_tuple(cast_to, op)));
-		switch (cast_to) {
-			case Lexeme::Bool:
-				operand_types.emplace(Logic);
-				break;
-			case Lexeme::Str:
-				operand_types.emplace(Str);
-				break;
-			case Lexeme::Int:
-				operand_types.emplace(Int);
-				break;
-			case Lexeme::Float:
-				operand_types.emplace(Real);
-				break;
-			default:
-				break;
+		else {
+			Members(context);
 		}
 	}
 }
