@@ -55,7 +55,7 @@ class Parser{
 	std::stack<const execution::OperationIndex> breaks;
 	std::unordered_map<VariableName, ValueType> var_types;
 
-	void PostOp(std::stack<ValueType> &operand_types, ValueType op1, ValueType op2 = Int);
+	void PostOp(std::stack<ValueType> &operand_types, ValueType op1, ValueType op2 = Logic);
 
 
 	// void ReturnLexeme();
@@ -83,6 +83,9 @@ class Parser{
 	void Assign(Context& context);
 
 	void Expression(Context& context);
+	void OrParts(Context& context);
+	void AndParts(Context& context);
+	void LogicalParts(Context& context);
 	void CompParts(Context& context);
 	void SumParts(Context& context);
 	void MultParts(Context& context);
@@ -107,8 +110,11 @@ void Parser::PostOp(std::stack<ValueType> &operand_types, ValueType op1, ValueTy
 	else if ((op1 == Real) || (op2 == Real)) {
 		operand_types.emplace(Real);
 	}
-	else {
+	else if ((op1 == Int) || (op2 == Int)){
 		operand_types.emplace(Int);
+	}
+	else {
+		operand_types.emplace(Logic);
 	}
 }
 
@@ -493,7 +499,7 @@ int Parser::WhileBlock(Context& context) {
 			operations[breaks.top()].reset(new execution::GoOperation(label_next));
 			breaks.pop();
 		}
-
+		
   		operations[if_index].reset(new execution::IfOperation(label_next));
 		
 		if_indices.pop();
@@ -619,6 +625,65 @@ void Parser::Assign(Context& context) {
 }
 
 void Parser::Expression(Context& context) {
+	OrParts(context);
+	while (lexer_.HasLexeme()) {
+		if (lexer_.PeekLexeme().type != Lexeme::Or) {
+			break;
+		}
+		lexer_.TakeLexeme();
+		OrParts(context);
+
+		PrepOperation();
+		operations.emplace_back(execution::kBinaries.at(std::make_tuple(Lexeme::Or, op1, op2))());
+		
+		operand_types.emplace(Logic);
+	}
+}
+
+void Parser::OrParts(Context& context) {
+	AndParts(context);
+	while (lexer_.HasLexeme()) {
+		if (lexer_.PeekLexeme().type != Lexeme::And) {
+			break;
+		}
+		lexer_.TakeLexeme();
+		AndParts(context);
+
+		PrepOperation();
+		operations.emplace_back(execution::kBinaries.at(std::make_tuple(Lexeme::And, op1, op2))());
+		
+		operand_types.emplace(Logic);
+	}
+}
+
+void Parser::AndParts(Context& context) {
+	bool not_ = false;
+	while (lexer_.HasLexeme()) {
+		if (lexer_.PeekLexeme().type != Lexeme::Not) {
+			break;
+		}
+		not_ ^= true;
+		lexer_.TakeLexeme();
+	}
+
+	LogicalParts(context);
+
+	if (not_) {
+		ValueType op = operand_types.top();
+		operand_types.pop();
+		try {
+			operations.emplace_back(kUnaries.at(std::make_tuple(Lexeme::Not, op)));
+	
+			PostOp(operand_types, Logic);
+		}
+		catch (std::out_of_range& e) {
+			operations.emplace_back(new execution::ThrowBadOperand("line " + std::to_string(Lexer::line) + 
+			 			": TypeError: bad operand type(s) for unary -: " + ToStringSem(op)));
+		}
+	}
+}
+
+void Parser::LogicalParts(Context& context) {
 	CompParts(context);
 	while (lexer_.HasLexeme()) {
 		const Lexeme::LexemeType op_type = lexer_.PeekLexeme().type;

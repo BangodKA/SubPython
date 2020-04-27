@@ -154,6 +154,7 @@ int main(int argc, char* argv[]) {
 		Parser parser(input);
 		parser.Run(context);
 		std::cout << "correct" << std::endl;
+		
 
 		while (context.operation_index < parser.operations.size()) {
 			// context.Show(std::cout); 

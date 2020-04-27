@@ -28,7 +28,7 @@
 {{op, Int, Logic}, &MakeOp<opfunc<int, bool>>},\
 {{op, Logic, Logic}, &MakeOp<opfunc<bool, bool>>},
 
-#define LogicOperation(op, opfunc)\
+#define CompOperation(op, opfunc)\
 {{op, Int, Int}, &MakeOp<opfunc<int, int>>},\
 {{op, Int, Real}, &MakeOp<opfunc<int, double>>},\
 {{op, Real, Int}, &MakeOp<opfunc<double, int>>},\
@@ -39,6 +39,17 @@
 {{op, Int, Logic}, &MakeOp<opfunc<int, bool>>},\
 {{op, Logic, Logic}, &MakeOp<opfunc<bool, bool>>},\
 {{op, Str, Str}, &MakeOp<opfunc<std::string, std::string>>},
+
+#define LogicOperation(op, opfunc)\
+{{op, Int, Int}, &MakeOp<opfunc<int, int>>},\
+{{op, Int, Real}, &MakeOp<opfunc<int, double>>},\
+{{op, Real, Int}, &MakeOp<opfunc<double, int>>},\
+{{op, Real, Real}, &MakeOp<opfunc<double, double>>},\
+{{op, Logic, Real}, &MakeOp<opfunc<bool, double>>},\
+{{op, Real, Logic}, &MakeOp<opfunc<double, bool>>},\
+{{op, Logic, Int}, &MakeOp<opfunc<bool, int>>},\
+{{op, Int, Logic}, &MakeOp<opfunc<int, bool>>},\
+{{op, Logic, Logic}, &MakeOp<opfunc<bool, bool>>},
 
 struct CustomException : public std::exception {
 	CustomException(std::string str) : str_(str) {}
@@ -394,6 +405,47 @@ void UnaryMinusOperation<T>::Do(Context& context) const {
 	context.stack.push(new_value);
 }
 
+template<typename T>
+struct NotOperation : Operation {
+  	void Do(Context& context) const final;
+};
+
+template<typename T>
+void NotOperation<T>::Do(Context& context) const {
+	const PolymorphicValue new_value(!(static_cast<T>(context.stack.top().Get())));
+	context.stack.pop();
+	context.stack.push(new_value);
+}
+
+// template<typename T>
+// void NotOperation<T>::Do(Context& context) const {
+// 	T val = static_cast<T>(context.stack.top().Get());
+// 	context.stack.pop();
+// 	if (val == 0) {
+// 		context.stack.push(StackValue(true));
+// 	}
+// 	else {
+// 		context.stack.push(StackValue(false));
+// 	}
+// }
+
+template<typename T>
+struct NotStrOperation : Operation {
+    void Do(Context& context) const final;
+};
+
+template<typename T>
+void NotStrOperation<T>::Do(Context& context) const {
+    StackValue op = context.stack.top();
+    context.stack.pop();
+    if (static_cast<T>(op.Get()) != "") {
+      	context.stack.emplace(false);
+    }
+    else {
+      	context.stack.emplace(true);
+    }
+}
+
 struct MathOperation : Operation {
     void Do(Context& context) const final;
 
@@ -552,6 +604,26 @@ StackValue NotEqualOperation<T1, T2>::DoMath(StackValue op1, StackValue op2) con
     return StackValue(static_cast<T1>(op1.Get()) != static_cast<T2>(op2.Get()));
 }
 
+template<typename T1, typename T2>
+struct AndOperation : MathOperation {
+    StackValue DoMath(StackValue op1, StackValue op2) const final;
+};
+
+template<typename T1, typename T2>
+StackValue AndOperation<T1, T2>::DoMath(StackValue op1, StackValue op2) const {
+    return StackValue(static_cast<T1>(op1.Get()) && static_cast<T2>(op2.Get()));
+}
+
+template<typename T1, typename T2>
+struct OrOperation : MathOperation {
+    StackValue DoMath(StackValue op1, StackValue op2) const final;
+};
+
+template<typename T1, typename T2>
+StackValue OrOperation<T1, T2>::DoMath(StackValue op1, StackValue op2) const {
+    return StackValue(static_cast<T1>(op1.Get()) || static_cast<T2>(op2.Get()));
+}
+
 template<typename T>
 struct BoolCast : Operation {
     void Do(Context& context) const final;
@@ -682,19 +754,21 @@ using OperationBuilder = Operation* (*)();
 using UnaryKey = std::tuple<OperationType, ValueType>;
 
 static const std::map<UnaryKey, std::shared_ptr<Operation>> kUnaries {
-  UnaryNoStr(UnaryMinus, UnaryMinusOperation)
-  UnaryNoStr(Bool, BoolCast)
-  UnaryNoStr(Int, IntCast)
-  UnaryNoStr(Float, FloatCast)
-  UnaryNoStr(Str, StrCast)
+	UnaryNoStr(UnaryMinus, UnaryMinusOperation)
+	UnaryNoStr(Bool, BoolCast)
+	UnaryNoStr(Int, IntCast)
+	UnaryNoStr(Float, FloatCast)
+	UnaryNoStr(Str, StrCast)
 
-  UnaryNoStr(Print, PrintOperation)
+	UnaryNoStr(Print, PrintOperation)
+	UnaryNoStr(Not, NotOperation)
 
-  {{Lexeme::Print, Str}, std::shared_ptr<Operation>(new PrintOperation<std::string>)},
-  {{Lexeme::Bool, Str}, std::shared_ptr<Operation>(new BoolStrCast<std::string>)},
-  {{Lexeme::Int, Str}, std::shared_ptr<Operation>(new IntStrCast<std::string>)},
-  {{Lexeme::Float, Str}, std::shared_ptr<Operation>(new FloatStrCast<std::string>)},
-  {{Lexeme::Str, Str}, std::shared_ptr<Operation>(new StrStrCast<std::string>)},
+	{{Lexeme::Not, Str}, std::shared_ptr<Operation>(new NotStrOperation<std::string>)},
+	{{Lexeme::Print, Str}, std::shared_ptr<Operation>(new PrintOperation<std::string>)},
+	{{Lexeme::Bool, Str}, std::shared_ptr<Operation>(new BoolStrCast<std::string>)},
+	{{Lexeme::Int, Str}, std::shared_ptr<Operation>(new IntStrCast<std::string>)},
+	{{Lexeme::Float, Str}, std::shared_ptr<Operation>(new FloatStrCast<std::string>)},
+	{{Lexeme::Str, Str}, std::shared_ptr<Operation>(new StrStrCast<std::string>)},
   
 };
 
@@ -716,12 +790,16 @@ static const std::map<BinaryKey, OperationBuilder> kBinaries {
 	{{Lexeme::Mod, Int, Logic}, &MakeOp<ModOperation<int, bool>>},
 	{{Lexeme::Mod, Logic, Logic}, &MakeOp<ModOperation<bool, bool>>},
 
-	LogicOperation(Lexeme::Less, LessOperation)
-	LogicOperation(Lexeme::Greater, GreaterOperation)
-	LogicOperation(Lexeme::LessEq, LessEqOperation)
-	LogicOperation(Lexeme::GreaterEq, GreaterEqOperation)
-	LogicOperation(Lexeme::Equal, EqualOperation)
-  LogicOperation(Lexeme::NotEqual, NotEqualOperation)
+	CompOperation(Lexeme::Less, LessOperation)
+	CompOperation(Lexeme::Greater, GreaterOperation)
+	CompOperation(Lexeme::LessEq, LessEqOperation)
+	CompOperation(Lexeme::GreaterEq, GreaterEqOperation)
+	CompOperation(Lexeme::Equal, EqualOperation)
+  	CompOperation(Lexeme::NotEqual, NotEqualOperation)
+
+	LogicOperation(Lexeme::And, AndOperation)
+	LogicOperation(Lexeme::Or, OrOperation)
+
 };
 
 }

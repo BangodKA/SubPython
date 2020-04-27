@@ -70,6 +70,9 @@ class Parser{
 	void Assign(Context& context);
 
 	void Expression(Context& context);
+	void OrParts(Context& context);
+	void AndParts(Context& context);
+	void LogicalParts(Context& context);
 	void CompParts(Context& context);
 	void SumParts(Context& context);
 	void MultParts(Context& context);

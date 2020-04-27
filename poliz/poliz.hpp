@@ -30,7 +30,7 @@
 {{op, Int, Logic}, &MakeOp<opfunc<int, bool>>},\
 {{op, Logic, Logic}, &MakeOp<opfunc<bool, bool>>},
 
-#define LogicOperation(op, opfunc)\
+#define CompOperation(op, opfunc)\
 {{op, Int, Int}, &MakeOp<opfunc<int, int>>},\
 {{op, Int, Real}, &MakeOp<opfunc<int, double>>},\
 {{op, Real, Int}, &MakeOp<opfunc<double, int>>},\
@@ -41,6 +41,17 @@
 {{op, Int, Logic}, &MakeOp<opfunc<int, bool>>},\
 {{op, Logic, Logic}, &MakeOp<opfunc<bool, bool>>},\
 {{op, Str, Str}, &MakeOp<opfunc<std::string, std::string>>},
+
+#define LogicOperation(op, opfunc)\
+{{op, Int, Int}, &MakeOp<opfunc<int, int>>},\
+{{op, Int, Real}, &MakeOp<opfunc<int, double>>},\
+{{op, Real, Int}, &MakeOp<opfunc<double, int>>},\
+{{op, Real, Real}, &MakeOp<opfunc<double, double>>},\
+{{op, Logic, Real}, &MakeOp<opfunc<bool, double>>},\
+{{op, Real, Logic}, &MakeOp<opfunc<double, bool>>},\
+{{op, Logic, Int}, &MakeOp<opfunc<bool, int>>},\
+{{op, Int, Logic}, &MakeOp<opfunc<int, bool>>},\
+{{op, Logic, Logic}, &MakeOp<opfunc<bool, bool>>},
 
 struct CustomException : public std::exception {
 	CustomException(std::string str) : str_(str) {}
@@ -208,6 +219,16 @@ struct UnaryMinusOperation : Operation {
   void Do(Context& context) const final;
 };
 
+template<typename T>
+struct NotOperation : Operation {
+  	void Do(Context& context) const final;
+};
+
+template<typename T>
+struct NotStrOperation : Operation {
+    void Do(Context& context) const final;
+};
+
 struct MathOperation : Operation {
     void Do(Context& context) const final;
 
@@ -279,6 +300,16 @@ struct NotEqualOperation : MathOperation {
     StackValue DoMath(StackValue op1, StackValue op2) const final;
 };
 
+template<typename T1, typename T2>
+struct AndOperation : MathOperation {
+    StackValue DoMath(StackValue op1, StackValue op2) const final;
+};
+
+template<typename T1, typename T2>
+struct OrOperation : MathOperation {
+    StackValue DoMath(StackValue op1, StackValue op2) const final;
+};
+
 template<typename T>
 struct BoolCast : Operation {
     void Do(Context& context) const final;
@@ -343,11 +374,15 @@ static const std::map<UnaryKey, std::shared_ptr<Operation>> kUnaries {
 	UnaryNoStr(Str, StrCast)
 
 	UnaryNoStr(Print, PrintOperation)
-  	{{Lexeme::Print, Str}, std::shared_ptr<Operation>(new PrintOperation<std::string>)},
+	UnaryNoStr(Not, NotOperation)
+
+	{{Lexeme::Not, Str}, std::shared_ptr<Operation>(new NotStrOperation<std::string>)},
+	{{Lexeme::Print, Str}, std::shared_ptr<Operation>(new PrintOperation<std::string>)},
 	{{Lexeme::Bool, Str}, std::shared_ptr<Operation>(new BoolStrCast<std::string>)},
 	{{Lexeme::Int, Str}, std::shared_ptr<Operation>(new IntStrCast<std::string>)},
 	{{Lexeme::Float, Str}, std::shared_ptr<Operation>(new FloatStrCast<std::string>)},
 	{{Lexeme::Str, Str}, std::shared_ptr<Operation>(new StrStrCast<std::string>)},
+  
 };
 
 using BinaryKey = std::tuple<OperationType, ValueType, ValueType>;
@@ -368,12 +403,15 @@ static const std::map<BinaryKey, OperationBuilder> kBinaries {
 	{{Lexeme::Mod, Int, Logic}, &MakeOp<ModOperation<int, bool>>},
 	{{Lexeme::Mod, Logic, Logic}, &MakeOp<ModOperation<bool, bool>>},
 
-	LogicOperation(Lexeme::Less, LessOperation)
-	LogicOperation(Lexeme::Greater, GreaterOperation)
-	LogicOperation(Lexeme::LessEq, LessEqOperation)
-	LogicOperation(Lexeme::GreaterEq, GreaterEqOperation)
-	LogicOperation(Lexeme::Equal, EqualOperation)
-	LogicOperation(Lexeme::NotEqual, NotEqualOperation)
+	CompOperation(Lexeme::Less, LessOperation)
+	CompOperation(Lexeme::Greater, GreaterOperation)
+	CompOperation(Lexeme::LessEq, LessEqOperation)
+	CompOperation(Lexeme::GreaterEq, GreaterEqOperation)
+	CompOperation(Lexeme::Equal, EqualOperation)
+	CompOperation(Lexeme::NotEqual, NotEqualOperation)
+
+	LogicOperation(Lexeme::And, AndOperation)
+	LogicOperation(Lexeme::Or, OrOperation)
 };
 
 } // namespace execution
