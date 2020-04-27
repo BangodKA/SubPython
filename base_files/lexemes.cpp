@@ -18,20 +18,20 @@ struct Lexeme {
         // BinintegerConst, // 0b or 0B
 
         // Keywords
-        Bool,
-        Int,
-        Str,
-        Float,
+        Bool, //
+        Int, //
+        Str, //
+        Float, //
         None,
         While,  //
-        For,
+        For, //
         Break,
         Continue,
         If, //
         Else, //
         ElIf, //
-        In,
-        Range, 
+        In, //
+        Range, //
         And,
         Or,
         Not,

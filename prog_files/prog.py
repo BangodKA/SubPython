@@ -5,10 +5,12 @@ print(i)
 # i = "dgff"
 # print(i)
 
-for i in "fsdfs":
-    print(i)
-
+# for i in "fsdfs":
+#     print(i)
 # print(i)
+x = 10 +4
+for i in range(i, x):
+    print(i)
 
 # x = 10
 # print(x)

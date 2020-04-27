@@ -241,9 +241,37 @@ int Parser::ForBlock(Context& context) {
 			operations.emplace_back(new execution::AssignOperation(lex.value));
 			var_types.insert_or_assign(lex.value, operand_types.top());
 
+			const execution::OperationIndex label_if = operations.size();
+
+			operations.emplace_back(new execution::VariableOperation(lex.value));
+			operations.emplace_back(new execution::VariableOperation("edge"));
+
+			operand_types.emplace(Int);
+			operand_types.emplace(Int);
+
+			PrepOperation();
+			operations.emplace_back(execution::kBinaries.at(std::make_tuple(Lexeme::Less, op1, op2))());
+
+			const execution::OperationIndex if_index = operations.size();
+			operations.emplace_back(nullptr);
+			if_indices.emplace(if_index);
+
 			if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::Colon) {
 				lexer_.TakeLexeme();
 				int next_block_indent = InnerBlock(context);
+
+				operations.emplace_back(new execution::VariableOperation(lex.value));
+				operations.emplace_back(new execution::AddOneOperation(lex.value));
+
+				operations.emplace_back(new execution::GoOperation(label_if));
+
+				const execution::OperationIndex label_next = operations.size();
+				operations[if_index].reset(new execution::IfOperation(label_next));
+				
+				if_indices.pop();
+
+				operations.emplace_back(new PopOperation());
+
 				return next_block_indent;
 			}
 		}
@@ -266,13 +294,13 @@ void Parser::Range(Context& context) {
 		}
 	}
 
-	else if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::StringConst) {
-		Lexeme lexeme = lexer_.TakeLexeme();
-		operand_types.emplace(Str);
-		operations.emplace_back(new execution::ValueOperation(std::string(lexeme)));
-		// operations.emplace_back(new execution::AssignOperation(lexe))
-		return;
-	}
+	// else if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::StringConst) {
+	// 	Lexeme lexeme = lexer_.TakeLexeme();
+	// 	operand_types.emplace(Str);
+	// 	operations.emplace_back(new execution::ValueOperation(std::string(lexeme)));
+	// 	// operations.emplace_back(new execution::AssignOperation(lexe))
+	// 	return;
+	// }
 
 	throw std::runtime_error(
 		std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ": " + "invalid syntax: wrong cycle field");
@@ -280,7 +308,8 @@ void Parser::Range(Context& context) {
 
 void Parser::Interval(Context& context) {
 	if (lexer_.HasLexeme() 
-		&& (lexer_.PeekLexeme().type == Lexeme::Identifier || lexer_.PeekLexeme().type == Lexeme::IntegerConst)) {
+		&& (lexer_.PeekLexeme().type == Lexeme::Identifier || lexer_.PeekLexeme().type == Lexeme::IntegerConst ||
+			lexer_.PeekLexeme().type == Lexeme::BoolConst)) {
 			Lexeme lex = lexer_.TakeLexeme();
 			if (lexer_.HasLexeme() && lexer_.PeekLexeme().type != Lexeme::Comma) {
 				operand_types.emplace(Int);
@@ -289,19 +318,56 @@ void Parser::Interval(Context& context) {
 					operand_types.emplace(Int);
 					operations.emplace_back(new execution::ValueOperation(int(lex)));
 				}
+				if (lex.type == Lexeme::BoolConst) {
+					operand_types.emplace(Logic);
+					operations.emplace_back(new execution::ValueOperation(bool(lex)));
+				}
+				if (lex.type == Lexeme::Identifier) {
+					if ((var_types[lex.value] != Int) && (var_types[lex.value] != Logic)) {
+						operations.emplace_back(new execution::ThrowBadOperand("line " + std::to_string(Lexer::line) + 
+			 			": TypeError: 'str' object cannot be interpreted as an integer"));
+					}
+					operand_types.emplace(var_types[lex.value]);
+					operations.emplace_back(new execution::VariableOperation(lex.value));
+				}
 				return;
 			}
 			if (lex.type == Lexeme::IntegerConst) {
-				operand_types.emplace(Int);
-				operations.emplace_back(new execution::ValueOperation(int(lex)));
+					operand_types.emplace(Int);
+					operations.emplace_back(new execution::ValueOperation(int(lex)));
+				}
+			if (lex.type == Lexeme::BoolConst) {
+				operand_types.emplace(Logic);
+				operations.emplace_back(new execution::ValueOperation(bool(lex)));
+			}
+			if (lex.type == Lexeme::Identifier) {
+				if ((var_types[lex.value] != Int) && (var_types[lex.value] != Logic)) {
+					operations.emplace_back(new execution::ThrowBadOperand("line " + std::to_string(Lexer::line) + 
+					": TypeError: 'str' object cannot be interpreted as an integer"));
+				}
+				operand_types.emplace(var_types[lex.value]);
+				operations.emplace_back(new execution::VariableOperation(lex.value));
 			}
 			lex = lexer_.TakeLexeme();
 			if (lexer_.HasLexeme() 
-				&& (lexer_.PeekLexeme().type == Lexeme::Identifier || lexer_.PeekLexeme().type == Lexeme::IntegerConst)) {
-					lexer_.TakeLexeme();
+				&& (lexer_.PeekLexeme().type == Lexeme::Identifier || lexer_.PeekLexeme().type == Lexeme::IntegerConst ||
+					lexer_.PeekLexeme().type == Lexeme::BoolConst)) {
+					lex = lexer_.TakeLexeme();
 					if (lex.type == Lexeme::IntegerConst) {
 						operand_types.emplace(Int);
 						operations.emplace_back(new execution::ValueOperation(int(lex)));
+					}
+					if (lex.type == Lexeme::BoolConst) {
+						operand_types.emplace(Logic);
+						operations.emplace_back(new execution::ValueOperation(bool(lex)));
+					}
+					if (lex.type == Lexeme::Identifier) {
+						if ((var_types[lex.value] != Int) && (var_types[lex.value] != Logic)) {
+							operations.emplace_back(new execution::ThrowBadOperand("line " + std::to_string(Lexer::line) + 
+							": TypeError: 'str' object cannot be interpreted as an integer"));
+						}
+						operand_types.emplace(var_types[lex.value]);
+						operations.emplace_back(new execution::VariableOperation(lex.value));
 					}
 					return;
 			}

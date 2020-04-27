@@ -156,6 +156,15 @@ struct AssignOperation : Operation {
   	const VariableName name_;
 };
 
+struct AddOneOperation : Operation {
+  	AddOneOperation(const VariableName& name): name_(name) {}
+
+  	void Do(Context& context) const final;
+
+  private:
+  	const VariableName name_;
+};
+
 struct AddForVarOperation : Operation {
   	void Do(Context& context) const final;
 };

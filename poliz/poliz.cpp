@@ -275,6 +275,22 @@ void AssignOperation::Do(Context& context) const {
 	context.variables[name_].reset(new Variable(name_, value.Get()));
 }
 
+struct AddOneOperation : Operation {
+  	AddOneOperation(const VariableName& name): name_(name) {}
+
+  	void Do(Context& context) const final;
+
+  private:
+  	const VariableName name_;
+};
+
+void AddOneOperation::Do(Context& context) const {
+    StackValue value = context.stack.top();
+    context.stack.pop();
+
+	context.variables[name_].reset(new Variable(name_, int(value.Get()) + 1));
+}
+
 
 struct AddForVarOperation : Operation {
   	void Do(Context& context) const final;
@@ -341,14 +357,14 @@ void ThrowBadOperand::Do(Context& context) const {
     throw CustomException(str_);
 }
 
-struct ThrowInvalidArgument : Operation {
-	ThrowInvalidArgument(std::string str) : str_(str) {} 
+struct ThrowTypeError : Operation {
+	ThrowTypeError(std::string str) : str_(str) {} 
   	void Do(Context& context) const final;
   private:
 	std::string str_;
 };
 
-void ThrowInvalidArgument::Do(Context& context) const {
+void ThrowTypeError::Do(Context& context) const {
     throw CustomException(str_);
 }
 
@@ -634,6 +650,7 @@ template<typename T>
 void PrintOperation<T>::Do(Context& context) const {
     StackValue op = context.stack.top();
     context.stack.pop();
+	
 	std::cout << static_cast<T>(op.Get()) << std::endl;
 }
 
