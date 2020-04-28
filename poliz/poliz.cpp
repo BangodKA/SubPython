@@ -596,6 +596,16 @@ StackValue EqualOperation<T1, T2>::DoMath(StackValue op1, StackValue op2) const 
 }
 
 template<typename T1, typename T2>
+struct EqualStrOperation : MathOperation {
+    StackValue DoMath(StackValue op1, StackValue op2) const final;
+};
+
+template<typename T1, typename T2>
+StackValue EqualStrOperation<T1, T2>::DoMath(StackValue op1, StackValue op2) const {
+    return StackValue(false);
+}
+
+template<typename T1, typename T2>
 struct NotEqualOperation : MathOperation {
     StackValue DoMath(StackValue op1, StackValue op2) const final;
 };
@@ -738,7 +748,7 @@ void PrintOperation<T>::Do(Context& context) const {
     StackValue op = context.stack.top();
     context.stack.pop();
 
-	std::cout << static_cast<T>(op.Get()) << ' ';
+	std::cout << static_cast<T>(op.Get()) << std::endl;
 }
 
 template<typename T>
@@ -783,7 +793,7 @@ static const std::map<UnaryKey, std::shared_ptr<Operation>> kUnaries {
 	UnaryNoStr(Not, NotOperation)
 
 	{{Lexeme::Not, Str}, std::shared_ptr<Operation>(new NotStrOperation<std::string>)},
-	{{Lexeme::Print, Str}, std::shared_ptr<Operation>(new PrintStrOperation<std::string>)},
+	{{Lexeme::Print, Str}, std::shared_ptr<Operation>(new PrintOperation<std::string>)},
 	{{Lexeme::Bool, Str}, std::shared_ptr<Operation>(new BoolStrCast<std::string>)},
 	{{Lexeme::Int, Str}, std::shared_ptr<Operation>(new IntStrCast<std::string>)},
 	{{Lexeme::Float, Str}, std::shared_ptr<Operation>(new FloatStrCast<std::string>)},
@@ -797,6 +807,13 @@ static const std::map<BinaryKey, OperationBuilder> kBinaries {
 	{{Lexeme::Add, Str, Str}, &MakeOp<PlusOperation<std::string, std::string>>},
 	{{Lexeme::Mul, Str, Int}, &MakeOp<MulStrROperation<std::string, int>>},
 	{{Lexeme::Mul, Int, Str}, &MakeOp<MulStrLOperation<int, std::string>>},
+
+    {{Lexeme::Equal, Str, Int}, &MakeOp<EqualStrOperation<std::string, int>>},
+	{{Lexeme::Equal, Int, Str}, &MakeOp<EqualStrOperation<int, std::string>>},
+    {{Lexeme::Equal, Str, Real}, &MakeOp<EqualStrOperation<std::string, double>>},
+	{{Lexeme::Equal, Real, Str}, &MakeOp<EqualStrOperation<double, std::string>>},
+    {{Lexeme::Equal, Str, Logic}, &MakeOp<EqualStrOperation<std::string, bool>>},
+	{{Lexeme::Equal, Logic, Str}, &MakeOp<EqualStrOperation<bool, std::string>>},
 
 	NumOperation(Lexeme::Add, PlusOperation)
 	NumOperation(Lexeme::Sub, MinusOperation)

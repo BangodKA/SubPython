@@ -20,16 +20,10 @@ class Parser{
 	void Run(Context& context);
 
  private:
-
-	ValueType op2;
-	ValueType op1;
  	
 	Lexer lexer_;
 	std::stack<int> indents;
-	std::stack<OperationIndex> if_indices;
 	std::stack<ValueType> operand_types;
-	std::stack<Lexeme::LexemeType> type_cast;
-	std::stack<Lexeme::LexemeType> operators;
 	std::stack<const execution::OperationIndex> loop_starts;
 	std::stack<const execution::OperationIndex> breaks;
 	std::unordered_map<VariableName, ValueType> var_types;
@@ -38,8 +32,8 @@ class Parser{
 
 	void PostOp(std::stack<ValueType> &operand_types, ValueType op1, ValueType op2 = Int);
 
-
-	// void ReturnLexeme();
+	void ProcessUnaryTypeExceptions(ValueType op1, Lexeme::LexemeType type);
+	void ProcessBinaryTypeExceptions(ValueType op1, ValueType op2, Lexeme::LexemeType type);
 
 	int IndentCounter();
 

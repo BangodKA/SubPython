@@ -301,6 +301,11 @@ struct EqualOperation : MathOperation {
 };
 
 template<typename T1, typename T2>
+struct EqualStrOperation : MathOperation {
+    StackValue DoMath(StackValue op1, StackValue op2) const final;
+};
+
+template<typename T1, typename T2>
 struct NotEqualOperation : MathOperation {
     StackValue DoMath(StackValue op1, StackValue op2) const final;
 };
@@ -387,7 +392,7 @@ static const std::map<UnaryKey, std::shared_ptr<Operation>> kUnaries {
 	UnaryNoStr(Not, NotOperation)
 
 	{{Lexeme::Not, Str}, std::shared_ptr<Operation>(new NotStrOperation<std::string>)},
-	{{Lexeme::Print, Str}, std::shared_ptr<Operation>(new PrintStrOperation<std::string>)},
+	{{Lexeme::Print, Str}, std::shared_ptr<Operation>(new PrintOperation<std::string>)},
 	{{Lexeme::Bool, Str}, std::shared_ptr<Operation>(new BoolStrCast<std::string>)},
 	{{Lexeme::Int, Str}, std::shared_ptr<Operation>(new IntStrCast<std::string>)},
 	{{Lexeme::Float, Str}, std::shared_ptr<Operation>(new FloatStrCast<std::string>)},
@@ -402,11 +407,17 @@ static const std::map<BinaryKey, OperationBuilder> kBinaries {
 	{{Lexeme::Mul, Str, Int}, &MakeOp<MulStrROperation<std::string, int>>},
 	{{Lexeme::Mul, Int, Str}, &MakeOp<MulStrLOperation<int, std::string>>},
 
+	{{Lexeme::Equal, Str, Int}, &MakeOp<EqualStrOperation<std::string, int>>},
+	{{Lexeme::Equal, Int, Str}, &MakeOp<EqualStrOperation<int, std::string>>},
+    {{Lexeme::Equal, Str, Real}, &MakeOp<EqualStrOperation<std::string, double>>},
+	{{Lexeme::Equal, Real, Str}, &MakeOp<EqualStrOperation<double, std::string>>},
+    {{Lexeme::Equal, Str, Logic}, &MakeOp<EqualStrOperation<std::string, bool>>},
+	{{Lexeme::Equal, Logic, Str}, &MakeOp<EqualStrOperation<bool, std::string>>},
+
 	NumOperation(Lexeme::Add, PlusOperation)
 	NumOperation(Lexeme::Sub, MinusOperation)
 	NumOperation(Lexeme::Mul, MulOperation)
 	NumOperation(Lexeme::Div, DivOperation)
-	// NumOperation(Mod, ModOperation)
 
 	{{Lexeme::Mod, Int, Int}, &MakeOp<ModOperation<int, int>>},
 	{{Lexeme::Mod, Logic, Int}, &MakeOp<ModOperation<bool, int>>},

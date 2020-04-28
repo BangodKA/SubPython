@@ -20,25 +20,22 @@ class Parser{
 	void Run(Context& context);
 
  private:
- 	
-	ValueType op2;
-	ValueType op1;
 
 	Lexer lexer_;
 	std::stack<int> indents;
-	std::stack<OperationIndex> if_indices;
 	std::stack<ValueType> operand_types;
-	std::stack<Lexeme::LexemeType> type_cast;
-	std::stack<Lexeme::LexemeType> operators;
 	std::stack<const execution::OperationIndex> loop_starts;
 	std::stack<const execution::OperationIndex> breaks;
 	std::unordered_map<VariableName, ValueType> var_types;
 
-	void PrepOperation();
+	std::tuple<ValueType, ValueType> PrepOperation();
 
 	void PostOp(std::stack<ValueType> &operand_types, ValueType op1, ValueType op2 = Logic);
 
 	std::string TypeToString(Lexeme::LexemeType type) const;
+
+	void ProcessUnaryTypeExceptions(ValueType op, Lexeme::LexemeType type);
+	void ProcessBinaryTypeExceptions(ValueType op1, ValueType op2, Lexeme::LexemeType type);
 
 	int IndentCounter();
 
@@ -82,11 +79,13 @@ std::string Parser::TypeToString(Lexeme::LexemeType type) const {
 	return oss.str();
 }
 
-void Parser::PrepOperation() {
-	op2 = operand_types.top();
+std::tuple<ValueType, ValueType> Parser::PrepOperation() {
+	ValueType op2 = operand_types.top();
 	operand_types.pop();
-	op1 = operand_types.top();
+	ValueType op1 = operand_types.top();
 	operand_types.pop();
+
+	return std::make_tuple(op2, op1);
 }
 
 void Parser::PostOp(std::stack<ValueType> &operand_types, ValueType op1, ValueType op2) {
@@ -116,45 +115,43 @@ void Parser::Run(Context& context) {
 				"line " + std::to_string(Lexer::line) + ":" + 
 				std::to_string(Lexer::pos - lexer_.PeekLexeme().value.length()) + ": IndentationError: unexpected indent");
 	}
-	try {
-		int next_block_indent = 0;
-		while (lexer_.HasLexeme()) {
-			if (next_block_indent != 0) {
-				throw std::runtime_error(
-					"line " + std::to_string(Lexer::line) + ":" + 
-					std::to_string(Lexer::pos - lexer_.PeekLexeme().value.length()) + ": IndentationError: unexpected indent");
-			}
-			if (lexer_.PeekLexeme().type == Lexeme::EOL) {
-				lexer_.TakeLexeme();
-			}
-			else {
-				next_block_indent = Block(context);
-			}
+	int next_block_indent = 0;
+	while (lexer_.HasLexeme()) {
+		if (next_block_indent != 0) {
+			throw std::runtime_error(
+				"line " + std::to_string(Lexer::line) + ":" + 
+				std::to_string(Lexer::pos - lexer_.PeekLexeme().value.length()) + ": IndentationError: unexpected indent");
 		}
-	}
-	catch (std::out_of_range& e) {
-		while (!if_indices.empty()) {
-			auto if_index = if_indices.top();
-			operations[if_index].reset(new execution::IfOperation(operations.size()));
-			if_indices.pop();
-    	}
-		std::string exception_mes = "";
-		Lexeme::LexemeType type = operators.top();
-		if (type != Lexeme::UnaryMinus && type != Lexeme::Not) {
-			exception_mes = "line " + std::to_string(Lexer::line) + 
-						": TypeError: unsupported operand type(s) for " + 
-						TypeToString(type) + ": " + ToStringSem(op1) + " and " + ToStringSem(op2);
+		if (lexer_.PeekLexeme().type == Lexeme::EOL) {
+			lexer_.TakeLexeme();
 		}
 		else {
-			std::string unmin = "";
-			if (type == Lexeme::UnaryMinus) {
-				unmin = "unary ";
-			}
-			exception_mes = "line " + std::to_string(Lexer::line) + 
-						": TypeError: unsupported operand type(s) for " + unmin + TypeToString(type) + ": " + ToStringSem(op1);
+			next_block_indent = Block(context);
 		}
-		operations.emplace_back(new execution::ThrowCustomException(exception_mes));
 	}
+}
+void Parser::ProcessUnaryTypeExceptions(ValueType op, Lexeme::LexemeType type) {
+	std::string exception_mes = "";
+	std::string unmin = "";
+	if (type == Lexeme::UnaryMinus) {
+		unmin = "unary ";
+	}
+	exception_mes = "line " + std::to_string(Lexer::line) + 
+				": TypeError: unsupported operand type(s) for " + unmin + TypeToString(type) + ": " + ToStringSem(op);
+	operations.emplace_back(new execution::ThrowCustomException(exception_mes));
+}
+
+void Parser::ProcessBinaryTypeExceptions(ValueType op1, ValueType op2, Lexeme::LexemeType type) {
+	// while (!breaks.empty()) {
+	// 	auto break_ind = breaks.top();
+	// 	operations[break_ind].reset(new execution::IfOperation(operations.size()));
+	// 	breaks.pop();
+	// }
+	std::string exception_mes = "";
+	exception_mes = "line " + std::to_string(Lexer::line) + 
+				": TypeError: unsupported operand type(s) for " + 
+				TypeToString(type) + ": " + ToStringSem(op1) + " and " + ToStringSem(op2);
+	operations.emplace_back(new execution::ThrowCustomException(exception_mes));
 }
 
 int Parser::IndentCounter() {
@@ -256,7 +253,6 @@ int Parser::Block(Context& context) {
 int Parser::ForBlock(Context& context) {
 	if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::Identifier) {
 		Lexeme lex = lexer_.TakeLexeme();
-		// operations.emplace_back(new execution::VariableOperation(lex));
 		if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::In) {
 			lexer_.TakeLexeme();
 			Range(context);
@@ -266,7 +262,6 @@ int Parser::ForBlock(Context& context) {
 
 			const execution::OperationIndex go_index = operations.size();
 			operations.emplace_back(nullptr);
-			if_indices.emplace(go_index);
 
 			const execution::OperationIndex label_if = operations.size();
 			loop_starts.emplace(label_if);
@@ -283,13 +278,17 @@ int Parser::ForBlock(Context& context) {
 			operand_types.emplace(Int);
 			operand_types.emplace(Int);
 
-			operators.emplace(Lexeme::Less);
-			PrepOperation();
-			operations.emplace_back(execution::kBinaries.at(std::make_tuple(Lexeme::Less, op1, op2))());
+			std::tuple<ValueType, ValueType> ops = PrepOperation();
+			try {
+				operations.emplace_back(execution::kBinaries.at(std::make_tuple(Lexeme::Less, std::get<1>(ops), std::get<0>(ops)))());
+			}
+			catch (std::out_of_range& e) {
+				ProcessBinaryTypeExceptions(std::get<1>(ops), std::get<0>(ops), Lexeme::Less);
+			}
+			
 
 			const execution::OperationIndex if_index = operations.size();
 			operations.emplace_back(nullptr);
-			if_indices.emplace(if_index);
 
 			if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::Colon) {
 				lexer_.TakeLexeme();
@@ -309,8 +308,6 @@ int Parser::ForBlock(Context& context) {
 				}
 
 				operations[if_index].reset(new execution::IfOperation(label_next));
-				
-				if_indices.pop();
 
 				return next_block_indent;
 			}
@@ -326,10 +323,15 @@ void Parser::Range(Context& context) {
 			lexer_.TakeLexeme();
 			Interval(context);
 
-			PrepOperation();
-			operations.emplace_back(execution::kBinaries.at(std::make_tuple(Lexeme::Range, op1, op2))());
-			operand_types.emplace(Int);
-			operand_types.emplace(Int);
+			std::tuple<ValueType, ValueType> ops = PrepOperation();
+			try {
+				operations.emplace_back(execution::kBinaries.at(std::make_tuple(Lexeme::Range, std::get<1>(ops), std::get<0>(ops)))());
+			}
+			catch (std::out_of_range) {
+				ProcessBinaryTypeExceptions(std::get<1>(ops), std::get<0>(ops), Lexeme::Range);
+			}
+			operand_types.emplace(std::get<1>(ops));
+			operand_types.emplace(std::get<0>(ops));
 			
 			std::string edge = "edge" + std::to_string(loop_starts.size());	
 			operations.emplace_back(new execution::AssignOperation(edge));
@@ -372,7 +374,6 @@ int Parser::IfBlock(Context& context) {
 
 	const execution::OperationIndex if_index = operations.size();
 	operations.emplace_back(nullptr);
-	if_indices.emplace(if_index);
 	  
 	if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::Colon) {
 		lexer_.TakeLexeme();
@@ -380,7 +381,6 @@ int Parser::IfBlock(Context& context) {
 
 		const execution::OperationIndex truth_index = operations.size();
 		operations.emplace_back(nullptr);
-		if_indices.emplace(truth_index);
 
 		const execution::OperationIndex label = operations.size();
 		operations[if_index].reset(new execution::IfOperation(label));
@@ -405,8 +405,6 @@ int Parser::IfBlock(Context& context) {
 		}
 		const execution::OperationIndex label_n = operations.size();
 		operations[truth_index].reset(new execution::GoOperation(label_n));
-		if_indices.pop();
-		if_indices.pop();
 		return next_block_indent;
 	}
 	throw std::runtime_error (std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ": " + "invalid syntax");
@@ -430,7 +428,6 @@ int Parser::WhileBlock(Context& context) {
 
 	const execution::OperationIndex if_index = operations.size();
 	operations.emplace_back(nullptr);
-	if_indices.emplace(if_index);
 
 	if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::Colon) {
 		lexer_.TakeLexeme();
@@ -451,8 +448,6 @@ int Parser::WhileBlock(Context& context) {
 		}
 		
   		operations[if_index].reset(new execution::IfOperation(label_next));
-		
-		if_indices.pop();
 
 		return next_block_indent;
 	}
@@ -547,26 +542,37 @@ void Parser::Print(Context& context) {
 		lexer_.TakeLexeme();
 		if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::RightParenthesis) {
 			lexer_.TakeLexeme();
-			operations.emplace_back(new execution::ValueOperation("\n"));
-			operations.emplace_back(kUnaries.at(std::make_tuple(Lexeme::Print, Str)));
+			operations.emplace_back(new execution::ValueOperation(""));
+				operations.emplace_back(kUnaries.at(std::make_tuple(Lexeme::Print, Str)));
 			return;
 		}
 		Expression(context);
-		
+		int comma_cnt = 0;
 		while (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::Comma) {
+			comma_cnt++;
 			lexer_.TakeLexeme();
 			ValueType op = operand_types.top();
 			operand_types.pop();
-			operations.emplace_back(kUnaries.at(std::make_tuple(Lexeme::Print, op)));
+			try {
+				operations.emplace_back(kUnaries.at(std::make_tuple(Lexeme::Str, op)));
+			}
+			catch (std::out_of_range) {
+				ProcessUnaryTypeExceptions(op, Lexeme::Str);
+			}
+			operations.emplace_back(new execution::ValueOperation(" "));
 			Expression(context);
 		}
 		if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::RightParenthesis) {
 			lexer_.TakeLexeme();
 			ValueType op = operand_types.top();
 			operand_types.pop();
-			operations.emplace_back(kUnaries.at(std::make_tuple(Lexeme::Print, op)));
-			
-			operations.emplace_back(new execution::ValueOperation("\n"));
+			operations.emplace_back(execution::kUnaries.at(std::make_tuple(Lexeme::Str, op)));
+
+			for (int i = 0; i < comma_cnt * 2; ++i) {
+				operations.emplace_back(execution::kBinaries.at(std::make_tuple(Lexeme::Add, Str, Str))());
+				
+			}
+
 			operations.emplace_back(kUnaries.at(std::make_tuple(Lexeme::Print, Str)));
 			
 			return;
@@ -604,9 +610,13 @@ void Parser::Expression(Context& context) {
 		lexer_.TakeLexeme();
 		OrParts(context);
 
-		operators.emplace(Lexeme::Or);
-		PrepOperation();
-		operations.emplace_back(execution::kBinaries.at(std::make_tuple(Lexeme::Or, op1, op2))());
+		std::tuple<ValueType, ValueType> ops = PrepOperation();
+		try { 
+			operations.emplace_back(execution::kBinaries.at(std::make_tuple(Lexeme::Or, std::get<1>(ops), std::get<0>(ops)))());
+		}
+		catch (std::out_of_range) {
+			ProcessBinaryTypeExceptions(std::get<1>(ops), std::get<0>(ops), Lexeme::Or);
+		}
 		
 		operand_types.emplace(Logic);
 	}
@@ -621,9 +631,13 @@ void Parser::OrParts(Context& context) {
 		lexer_.TakeLexeme();
 		AndParts(context);
 
-		operators.emplace(Lexeme::And);
-		PrepOperation();
-		operations.emplace_back(execution::kBinaries.at(std::make_tuple(Lexeme::And, op1, op2))());
+		std::tuple<ValueType, ValueType> ops = PrepOperation();
+		try { 
+			operations.emplace_back(execution::kBinaries.at(std::make_tuple(Lexeme::And, std::get<1>(ops), std::get<0>(ops)))());
+		}
+		catch (std::out_of_range) {
+			ProcessBinaryTypeExceptions(std::get<1>(ops), std::get<0>(ops), Lexeme::And);
+		}
 		
 		operand_types.emplace(Logic);
 	}
@@ -642,11 +656,14 @@ void Parser::AndParts(Context& context) {
 	LogicalParts(context);
 
 	if (not_) {
-		operators.emplace(Lexeme::Not);
-		op1 = operand_types.top();
+		ValueType op = operand_types.top();
 		operand_types.pop();
-		// try {
-			operations.emplace_back(kUnaries.at(std::make_tuple(Lexeme::Not, op1)));
+		try {
+			operations.emplace_back(kUnaries.at(std::make_tuple(Lexeme::Not, op)));
+		}
+		catch (std::out_of_range) {
+			ProcessUnaryTypeExceptions(op, Lexeme::Not);
+		}
 	
 			PostOp(operand_types, Logic);
 		// }
@@ -669,11 +686,13 @@ void Parser::LogicalParts(Context& context) {
 		lexer_.TakeLexeme();
 		CompParts(context);
 
-		operators.emplace(op_type);
-
-		PrepOperation();
-
-		operations.emplace_back(execution::kBinaries.at(std::make_tuple(op_type, op1, op2))());
+		std::tuple<ValueType, ValueType> ops = PrepOperation();
+		try { 
+			operations.emplace_back(execution::kBinaries.at(std::make_tuple(op_type, std::get<1>(ops), std::get<0>(ops)))());
+		}
+		catch (std::out_of_range) {
+			ProcessBinaryTypeExceptions(std::get<1>(ops), std::get<0>(ops), op_type);
+		}
 		
 		operand_types.emplace(Logic);
 	}
@@ -689,13 +708,16 @@ void Parser::CompParts(Context& context) {
 		lexer_.TakeLexeme();
 		SumParts(context);
 
-		operators.emplace(op_type);
-		PrepOperation();
+		std::tuple<ValueType, ValueType> ops = PrepOperation();
+		try { 
+			operations.emplace_back(execution::kBinaries.at(std::make_tuple(op_type, std::get<1>(ops), std::get<0>(ops)))());
+		}
+		catch (std::out_of_range) {
+			ProcessBinaryTypeExceptions(std::get<1>(ops), std::get<0>(ops), op_type);
+		}
 
-		operations.emplace_back(execution::kBinaries.at(std::make_tuple(op_type, op1, op2))());
 
-
-		PostOp(operand_types, op1, op2);
+		PostOp(operand_types, std::get<1>(ops), std::get<0>(ops));
 	}
 }
 
@@ -710,12 +732,15 @@ void Parser::SumParts(Context& context) {
 		lexer_.TakeLexeme();
 		MultParts(context);
 
-		operators.emplace(op_type);
-		PrepOperation();
+		std::tuple<ValueType, ValueType> ops = PrepOperation();
+		try { 
+			operations.emplace_back(execution::kBinaries.at(std::make_tuple(op_type, std::get<1>(ops), std::get<0>(ops)))());
+		}
+		catch (std::out_of_range) {
+			ProcessBinaryTypeExceptions(std::get<1>(ops), std::get<0>(ops), op_type);
+		}
 
-		operations.emplace_back(execution::kBinaries.at(std::make_tuple(op_type, op1, op2))());	
-
-		PostOp(operand_types, op1, op2);
+		PostOp(operand_types, std::get<1>(ops), std::get<0>(ops));
 	}
 }
 
@@ -735,13 +760,17 @@ void Parser::MultParts(Context& context) {
 	Cast(context);
 
 	if (minus) {
-		operators.emplace(Lexeme::UnaryMinus);
-		op1 = operand_types.top();
+		ValueType op = operand_types.top();
 		operand_types.pop();
-		// try {
-			operations.emplace_back(kUnaries.at(std::make_tuple(Lexeme::UnaryMinus, op1)));
+		try {
+			operations.emplace_back(kUnaries.at(std::make_tuple(Lexeme::UnaryMinus, op)));
+		}
+		catch (std::out_of_range) {
+			ProcessUnaryTypeExceptions(op, Lexeme::UnaryMinus);
+		}
 	
-			PostOp(operand_types, op1);
+			PostOp(operand_types, op);
+		
 		// }
 		// catch (std::out_of_range& e) {
 		// 	operations.emplace_back(new execution::ThrowBadOperand("line " + std::to_string(Lexer::line) + 
@@ -757,7 +786,7 @@ void Parser::Cast(Context& context) {
 		if (cast_type == Lexeme::Bool || cast_type == Lexeme::Int ||
 			cast_type == Lexeme::Str || cast_type == Lexeme::Float) {
 			cast = true;
-		// type_cast.emplace(cast_type);
+
 			lexer_.TakeLexeme();
 			if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::LeftParenthesis) {
 				lexer_.TakeLexeme();
