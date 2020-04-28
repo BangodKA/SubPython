@@ -229,6 +229,11 @@ struct NotStrOperation : Operation {
     void Do(Context& context) const final;
 };
 
+template<typename T1, typename T2>
+struct GetRangeOperation : Operation {
+    void Do(Context& context) const final;
+};
+
 struct MathOperation : Operation {
     void Do(Context& context) const final;
 
@@ -355,6 +360,11 @@ struct PrintOperation : Operation {
     void Do(Context& context) const final;
 };
 
+template<typename T>
+struct PrintStrOperation : Operation {
+    void Do(Context& context) const final;
+};
+
 using Operations = std::vector<std::shared_ptr<Operation>>;
 
 using OperationType = Lexeme::LexemeType;
@@ -377,7 +387,7 @@ static const std::map<UnaryKey, std::shared_ptr<Operation>> kUnaries {
 	UnaryNoStr(Not, NotOperation)
 
 	{{Lexeme::Not, Str}, std::shared_ptr<Operation>(new NotStrOperation<std::string>)},
-	{{Lexeme::Print, Str}, std::shared_ptr<Operation>(new PrintOperation<std::string>)},
+	{{Lexeme::Print, Str}, std::shared_ptr<Operation>(new PrintStrOperation<std::string>)},
 	{{Lexeme::Bool, Str}, std::shared_ptr<Operation>(new BoolStrCast<std::string>)},
 	{{Lexeme::Int, Str}, std::shared_ptr<Operation>(new IntStrCast<std::string>)},
 	{{Lexeme::Float, Str}, std::shared_ptr<Operation>(new FloatStrCast<std::string>)},
@@ -402,6 +412,8 @@ static const std::map<BinaryKey, OperationBuilder> kBinaries {
 	{{Lexeme::Mod, Logic, Int}, &MakeOp<ModOperation<bool, int>>},
 	{{Lexeme::Mod, Int, Logic}, &MakeOp<ModOperation<int, bool>>},
 	{{Lexeme::Mod, Logic, Logic}, &MakeOp<ModOperation<bool, bool>>},
+
+	{{Lexeme::Range, Int, Int}, &MakeOp<GetRangeOperation<int, int>>},
 
 	CompOperation(Lexeme::Less, LessOperation)
 	CompOperation(Lexeme::Greater, GreaterOperation)

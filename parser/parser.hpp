@@ -11,15 +11,6 @@
 // #include "../lexer/lexer.hpp"
 #include "../poliz/poliz.hpp"
 
-// struct BadOperand : public std::exception {
-// 	BadOperand(std::string str) : str_(str) {}
-// 	const char * what () const throw () {
-// 		return (str_ + "\n").c_str();
-// 	}
-//   private:
-// 	std::string str_;
-// };
-
 using namespace execution;
 
 class Parser{

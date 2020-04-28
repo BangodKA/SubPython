@@ -354,7 +354,7 @@ struct IfOperation : GoOperation {
 
 void IfOperation::Do(Context& context) const {
   	StackValue value = context.stack.top();
-//   context.stack.pop();
+    context.stack.pop();
 
 	if (!value.Get()) {
 		GoOperation::Do(context);
@@ -415,18 +415,6 @@ void NotOperation<T>::Do(Context& context) const {
 	context.stack.push(new_value);
 }
 
-// template<typename T>
-// void NotOperation<T>::Do(Context& context) const {
-// 	T val = static_cast<T>(context.stack.top().Get());
-// 	context.stack.pop();
-// 	if (val == 0) {
-// 		context.stack.push(StackValue(true));
-// 	}
-// 	else {
-// 		context.stack.push(StackValue(false));
-// 	}
-// }
-
 template<typename T>
 struct NotStrOperation : Operation {
     void Do(Context& context) const final;
@@ -441,6 +429,21 @@ void NotStrOperation<T>::Do(Context& context) const {
     }
     else {
       	context.stack.emplace(true);
+    }
+}
+
+template<typename T1, typename T2>
+struct GetRangeOperation : Operation {
+    void Do(Context& context) const final;
+};
+
+template<typename T1, typename T2>
+void GetRangeOperation<T1, T2>::Do(Context& context) const {
+    if (context.stack.size() == 1) {
+        StackValue op2 = context.stack.top();
+        context.stack.pop();
+        context.stack.emplace(StackValue(0));
+        context.stack.emplace(op2);
     }
 }
 
@@ -734,8 +737,26 @@ template<typename T>
 void PrintOperation<T>::Do(Context& context) const {
     StackValue op = context.stack.top();
     context.stack.pop();
-	
-	std::cout << static_cast<T>(op.Get()) << std::endl;
+
+	std::cout << static_cast<T>(op.Get()) << ' ';
+}
+
+template<typename T>
+struct PrintStrOperation : Operation {
+    void Do(Context& context) const final;
+};
+
+template<typename T>
+void PrintStrOperation<T>::Do(Context& context) const {
+    StackValue op = context.stack.top();
+    context.stack.pop();
+    std::string str = static_cast<T>(op.Get());
+    if (str == "\n") {
+        std::cout << std::endl;
+    }
+    else {
+	    std::cout << str << ' ';
+    }
 }
 
 using Operations = std::vector<std::shared_ptr<Operation>>;
@@ -762,7 +783,7 @@ static const std::map<UnaryKey, std::shared_ptr<Operation>> kUnaries {
 	UnaryNoStr(Not, NotOperation)
 
 	{{Lexeme::Not, Str}, std::shared_ptr<Operation>(new NotStrOperation<std::string>)},
-	{{Lexeme::Print, Str}, std::shared_ptr<Operation>(new PrintOperation<std::string>)},
+	{{Lexeme::Print, Str}, std::shared_ptr<Operation>(new PrintStrOperation<std::string>)},
 	{{Lexeme::Bool, Str}, std::shared_ptr<Operation>(new BoolStrCast<std::string>)},
 	{{Lexeme::Int, Str}, std::shared_ptr<Operation>(new IntStrCast<std::string>)},
 	{{Lexeme::Float, Str}, std::shared_ptr<Operation>(new FloatStrCast<std::string>)},
@@ -781,12 +802,13 @@ static const std::map<BinaryKey, OperationBuilder> kBinaries {
 	NumOperation(Lexeme::Sub, MinusOperation)
 	NumOperation(Lexeme::Mul, MulOperation)
 	NumOperation(Lexeme::Div, DivOperation)
-	// NumOperation(Mod, ModOperation)
 
 	{{Lexeme::Mod, Int, Int}, &MakeOp<ModOperation<int, int>>},
 	{{Lexeme::Mod, Logic, Int}, &MakeOp<ModOperation<bool, int>>},
 	{{Lexeme::Mod, Int, Logic}, &MakeOp<ModOperation<int, bool>>},
 	{{Lexeme::Mod, Logic, Logic}, &MakeOp<ModOperation<bool, bool>>},
+
+    {{Lexeme::Range, Int, Int}, &MakeOp<GetRangeOperation<int, int>>},
 
 	CompOperation(Lexeme::Less, LessOperation)
 	CompOperation(Lexeme::Greater, GreaterOperation)
