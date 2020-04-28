@@ -7,6 +7,7 @@
 #include <vector>
 #include <stack>
 #include <map>
+#include <queue>
 
 #include "../lexer/lexer.hpp"
 
@@ -160,6 +161,7 @@ struct Context {
 	OperationIndex operation_index = 0;
 	std::stack<StackValue> stack;
 	std::unordered_map<VariableName, std::unique_ptr<Variable> > variables;
+    std::queue<int> position;
 
 	std::vector<StackValue> DumpStack() const;
 
@@ -182,6 +184,21 @@ struct Operation {
   virtual ~Operation() {}
   virtual void Do(Context& context) const = 0;
 };
+
+struct PosOperation : Operation {
+    PosOperation(int pos, int line): pos_(pos), line_(line) {}
+
+    void Do(Context& context) const final;
+
+ private:
+    const int pos_;
+    const int line_;
+};
+
+void PosOperation::Do(Context& context) const {
+    context.position.emplace(pos_);
+    context.position.emplace(line_);
+}
 
 struct ValueOperation : Operation {
     ValueOperation(PolymorphicValue value): value_(value) {}
@@ -206,11 +223,16 @@ struct VariableOperation : Operation {
 };
 
 void VariableOperation::Do(Context& context) const {
+    int pos = context.position.front();
+    context.position.pop();
+    int line = context.position.front();
+    context.position.pop();
     try {
         context.stack.emplace(context.variables.at(name_).get());
     }
     catch (std::out_of_range) {
-        throw CustomException("NameError: name '" + name_ +"' is not defined");
+        throw CustomException("line " + std::to_string(line) + ":" +
+        std::to_string(pos) + ": NameError: name '" + name_ +"' is not defined");
     }
 
 }

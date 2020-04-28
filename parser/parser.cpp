@@ -365,13 +365,16 @@ const execution::OperationIndex Parser::PrepForLoopParams(Lexeme lex) {
 	const execution::OperationIndex label_if = operations.size();
 	loop_starts.emplace(label_if);
 
+	operations.emplace_back(new execution::PosOperation(Lexer::pos, Lexer::line));
 	operations.emplace_back(new execution::VariableOperation(lex.value));
 	operations.emplace_back(new execution::AddOneOperation(lex.value));
 
 	const execution::OperationIndex label_new = operations.size();
 	operations[go_index].reset(new execution::GoOperation(label_new));
 
+	operations.emplace_back(new execution::PosOperation(Lexer::pos, Lexer::line));
 	operations.emplace_back(new execution::VariableOperation(lex.value));
+	operations.emplace_back(new execution::PosOperation(Lexer::pos, Lexer::line));
 	operations.emplace_back(new execution::VariableOperation("edge" + std::to_string(loop_starts.size() - 1)));
 
 	operand_types.emplace(Int);
@@ -783,6 +786,7 @@ void Parser::Members() {
 	switch (lexeme.type) {
 		case Lexeme::Identifier:
 			operand_types.emplace(var_types[lexeme.value]);
+			operations.emplace_back(new execution::PosOperation(Lexer::pos, Lexer::line));
 			operations.emplace_back(new execution::VariableOperation(lexeme.value));
 			return;
 		case Lexeme::IntegerConst:
