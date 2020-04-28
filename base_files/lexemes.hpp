@@ -6,66 +6,61 @@
 struct Lexeme {
     enum LexemeType {
         // Constants
-        // String consists of ASCII only; long literals can be wrapped up into either ''' or """
-        StringConst,  
+        // String consists of ASCII only;
+        StringConst,   //
         // True/False
-        BoolConst,
+        BoolConst, //
         // Numbers
-        IntegerConst, 
-        FloatConst,
-        // OctintegerConst, // 0o or 0O
-        // HexintegerConst, // 0x or 0X
-        // BinintegerConst, // 0b or 0B
+        IntegerConst, //
+        FloatConst, //
 
         // Keywords
-        Bool,
-        Int,
-        Str,
-        Float,
-        While, 
-        For,
-        Break,
-        Continue,
-        If,
-        Else,
-        ElIf,
-        In,
-        Range,
+        Bool, //
+        Int, //
+        Str, //
+        Float, //
+        While,  //
+        For, //
+        Break, //
+        Continue, //
+        If, //
+        Else, //
+        ElIf, //
+        In, //
+        Range, //
         And,
         Or,
         Not,
-        Print,
+        Print, //
 
         // Punctuators/Operators
-        EOL,
-        IndentSpace,
-        Comma,
-        Colon,
+        EOL, //
+        IndentSpace, //
+        Comma, //
+        Colon, //
         BackSlash, 
-        LeftParenthesis,
-        RightParenthesis,
-        Assign,
-        Equal,
-        NotEqual,
-        Less,
-        LessEq,
-        Greater,
-        GreaterEq,
-        Add,
-        Sub,
-        Mul,
-        Div,
-        Mod,
+        LeftParenthesis, //
+        RightParenthesis, //
+        Assign, //
+        Equal, //
+        NotEqual, //
+        Less, //
+        LessEq, // 
+        Greater, //
+        GreaterEq, //
+        Add, //
+        Sub, // 
+        Mul, // 
+        Div, //
+        Mod, //
 
-        // Special operations, not lexemes
-        UnaryMinus,
+        UnaryMinus, // Special operation, not lexeme
 
-        Identifier,
+        Identifier, //
     };
 	Lexeme() = default;
     LexemeType type;
 
-    // bool boolean_value;
     std::string value;
 
     operator bool() const;

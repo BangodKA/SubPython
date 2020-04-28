@@ -38,9 +38,12 @@ class Parser{
 	std::stack<OperationIndex> if_indices;
 	std::stack<ValueType> operand_types;
 	std::stack<Lexeme::LexemeType> type_cast;
+	std::stack<Lexeme::LexemeType> operators;
 	std::stack<const execution::OperationIndex> loop_starts;
 	std::stack<const execution::OperationIndex> breaks;
 	std::unordered_map<VariableName, ValueType> var_types;
+
+	std::string TypeToString(Lexeme::LexemeType type) const;
 
 	void PostOp(std::stack<ValueType> &operand_types, ValueType op1, ValueType op2 = Int);
 

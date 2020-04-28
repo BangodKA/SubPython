@@ -8,8 +8,6 @@
 #include <stack>
 #include <map>
 
-#include <type_traits>
-
 #include "../lexer/lexer.hpp"
 
 #define UnaryNoStr(op, opfunc)\
@@ -371,14 +369,14 @@ void PopOperation::Do(Context& context) const {
     context.stack.pop();
 }
 
-struct ThrowBadOperand : Operation {
-	ThrowBadOperand(std::string str) : str_(str) {} 
+struct ThrowCustomException : Operation {
+	ThrowCustomException(std::string str) : str_(str) {} 
   	void Do(Context& context) const final;
   private:
 	std::string str_;
 };
 
-void ThrowBadOperand::Do(Context& context) const {
+void ThrowCustomException::Do(Context& context) const {
     throw CustomException(str_);
 }
 

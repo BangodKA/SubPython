@@ -200,8 +200,8 @@ struct PopOperation : Operation {
   	void Do(Context& context) const final;
 };
 
-struct ThrowBadOperand : Operation {
-	ThrowBadOperand(std::string str) : str_(str) {} 
+struct ThrowCustomException : Operation {
+	ThrowCustomException(std::string str) : str_(str) {} 
   	void Do(Context& context) const final;
   private:
 	std::string str_;

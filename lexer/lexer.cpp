@@ -6,25 +6,25 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../base_files/lexemes.hpp"
+#include "../base_files/print.hpp"
 
 class Lexer {
- public:
+  public:
 	explicit Lexer(std::istream& input);
-	using Lexemes = std::vector <Lexeme>;
 
 	static int line;
-	static  int pos;
-	std::istream& input_;
+	static int pos;
 
 	bool HasLexeme();
 	const Lexeme& PeekLexeme() const;
 	Lexeme TakeLexeme();
 
 
- private:
+  private:
 	using Char = std::istream::int_type;
 	using State = bool (Lexer::*)(Char c);
+
+	 std::istream& input_;
 
 	void Unget();
 
@@ -55,11 +55,10 @@ class Lexer {
 	bool ScreenSymbol(Char c);
 
 	// Comments
-	bool LineComments(Char c);
+	// bool LineComments(Char c);
 
 	bool has_lexeme_;
 	Lexeme lexeme_;
-	Lexemes lexemes_;
 	State state_;
 
 	static bool IsVar(Char c);
@@ -72,7 +71,7 @@ class Lexer {
 };
 
 int Lexer::line = 1;
-int Lexer::pos = 1;
+int Lexer::pos = 0;
 
 void Lexer::Unget() {
 	input_.unget();
@@ -187,11 +186,6 @@ bool Lexer::LineStart(Lexer::Char c) {
 		return true;
 	}
 
-	// if (c == '\t') {
-	// 	lexeme_.type = IndentTab;
-	// 	return true;
-	// }
-
 	if (c == '\n') {
 		pos = 0;
 		line++;
@@ -278,15 +272,14 @@ bool Lexer::Initial(Lexer::Char c) {
 	}
 
 	if (c == '#') {
-		// state_ = &Lexer::LineComments;
+		state_ = &Lexer::LineStart;
 		while (c != '\n' && c != std::istream::traits_type::eof()) c = input_.get();
 		Unget();
 		return false;
 	}
 
-	throw std::runtime_error(
-		std::to_string(line) + ":" + std::to_string(pos) + ": " 
-						+ "invalid character " + std::string(1, c));
+	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) + 
+				": LexicalError invalid character " + std::string(1, c));
 }
 
 bool Lexer::LineBreak(Lexer::Char c) {
@@ -297,7 +290,8 @@ bool Lexer::LineBreak(Lexer::Char c) {
 		return true;
 	}
 
-	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) + ": " + "invalid character " + std::string(1, c));
+	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) + 
+				": LexicalError invalid character " + std::string(1, c));
 }
 
 bool Lexer::CompSigns(Lexer::Char c) {
@@ -309,7 +303,8 @@ bool Lexer::CompSigns(Lexer::Char c) {
 		return true;
 	}
 	if (lexeme_.value[0] == '!') {
-		throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) + ": " + "invalid character " + std::string(1, c));
+		throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) +
+				 ": LexicalError invalid character " + std::string(1, c));
 	}
 	Unget();
 	return true;
@@ -330,7 +325,8 @@ bool Lexer::NoIntegerPart(Lexer::Char c) {
 		return false;
 	}
 
-	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) + ": " + "invalid character " + std::string(1, c));
+	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) + 
+				": LexicalError invalid character " + std::string(1, c));
 }
 
 bool Lexer::Float(Lexer::Char c) {
@@ -365,6 +361,7 @@ bool Lexer::Zero(Lexer::Char c) {
 		return false;
 	}
 	if (c == '0') {
+		pos++;
 		c = input_.get();
 		return false;
 	}
@@ -408,7 +405,8 @@ bool Lexer::SignEFloat(Lexer::Char c) {
 		return false;
 	}
 
-	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) + ": " + "invalid character" + std::string(1, c));
+	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) + 
+				": LexicalError invalid character " + std::string(1, c));
 }
 
 bool Lexer::EFloat(Lexer::Char c) {
@@ -418,7 +416,8 @@ bool Lexer::EFloat(Lexer::Char c) {
 		return false;
 	}
 
-	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) + ": " + "invalid character" + std::string(1, c));
+	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) + 
+				": LexicalError invalid character " + std::string(1, c));
 }
 
 bool Lexer::FullEFloat(Char c) {
@@ -454,13 +453,11 @@ bool Lexer::Variable(Lexer::Char c) {
 
 bool Lexer::String(Lexer::Char c) {
 	if (c == '\\') {
-		// lexeme_.value.push_back(input_.get());
 		state_ = &Lexer::ScreenSymbol;
 		return false;
 	}
 
 	if (c == lexeme_.value[0]) {
-		// lexeme_.value.push_back(c);
 		state_ = &Lexer::Initial;
 		lexeme_.type = Lexeme::StringConst;
 		lexeme_.value.erase(0, 1);
@@ -473,10 +470,12 @@ bool Lexer::String(Lexer::Char c) {
 	}
 
 	if (!IsRelevant(c)) {
-		throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) + ": " + "invalid character " + std::string(1, c));
+		throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) + 
+				": LexicalError invalid character " + std::string(1, c));
 	}
 
-	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) + ": " + "lexical : missing terminating " + std::string(1, lexeme_.value[0]) + " character");
+	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos - 1) + 
+			": lexical : missing terminating " + std::string(1, lexeme_.value[0]) + " character");
 }
 
 bool Lexer::ScreenSymbol(Lexer::Char c) {
@@ -485,10 +484,10 @@ bool Lexer::ScreenSymbol(Lexer::Char c) {
 	return false;
 }
 
-bool Lexer::LineComments(Lexer::Char c) {
-	if (c == '\n') {
-		Unget();
-		state_ = &Lexer::Initial;
-	}
-	return false;
-}
+// bool Lexer::LineComments(Lexer::Char c) {
+// 	if (c == '\n') {
+// 		Unget();
+// 		state_ = &Lexer::Initial;
+// 	}
+// 	return false;
+// }

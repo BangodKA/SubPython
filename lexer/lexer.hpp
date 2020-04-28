@@ -6,24 +6,24 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../base_files/lexemes.hpp"
+#include "../base_files/print.hpp"
 
 class Lexer {
- public:
+  public:
 	explicit Lexer(std::istream& input);
-	using Lexemes = std::vector <Lexeme>;
 
 	static int line;
 	static int pos;
-	std::istream& input_;
 
 	bool HasLexeme();
 	const Lexeme& PeekLexeme() const;
 	Lexeme TakeLexeme();
 
- private:
+  private:
 	using Char = std::istream::int_type;
 	using State = bool (Lexer::*)(Char c);
+
+	std::istream& input_;
 
 	void Unget();
 
@@ -54,11 +54,10 @@ class Lexer {
 	bool ScreenSymbol(Char c);
 
 	// Comments
-	bool LineComments(Char c);
+	// bool LineComments(Char c);
 
 	bool has_lexeme_;
 	Lexeme lexeme_;
-	Lexemes lexemes_;
 	State state_;
 
 	static bool IsVar(Char c);
