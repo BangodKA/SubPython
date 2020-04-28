@@ -9,7 +9,6 @@
 #include <vector>
 #include <stack>
 #include <map>
-#include <queue>
 
 #include <type_traits>
 
@@ -125,7 +124,6 @@ struct Context {
 	OperationIndex operation_index = 0;
 	std::stack<StackValue> stack;
 	std::unordered_map<VariableName, std::unique_ptr<Variable> > variables;
-	std::queue<int> position;
 
 	std::vector<StackValue> DumpStack() const;
 
@@ -138,16 +136,6 @@ struct Operation {
 	virtual void Do(Context& context) const = 0;
 };
 
-struct PosOperation : Operation {
-    PosOperation(int pos, int line): pos_(pos), line_(line) {}
-
-    void Do(Context& context) const final;
-
- private:
-    const int pos_;
-    const int line_;
-};
-
 struct ValueOperation : Operation {
     ValueOperation(PolymorphicValue value): value_(value) {}
 
@@ -158,12 +146,14 @@ struct ValueOperation : Operation {
 };
 
 struct VariableOperation : Operation {
-  	VariableOperation(const VariableName& name): name_(name) {}
+	VariableOperation(const VariableName& name, int pos, int line): name_(name), pos_(pos), line_(line) {}
 
-  	void Do(Context& context) const final;
+	void Do(Context& context) const final;
 
-  private:
-  	const VariableName name_;
+	private:
+	const VariableName name_;
+	int pos_;
+	int line_;
 };
 
 struct AssignOperation : Operation {

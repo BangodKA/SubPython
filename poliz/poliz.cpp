@@ -185,21 +185,6 @@ struct Operation {
   virtual void Do(Context& context) const = 0;
 };
 
-struct PosOperation : Operation {
-    PosOperation(int pos, int line): pos_(pos), line_(line) {}
-
-    void Do(Context& context) const final;
-
- private:
-    const int pos_;
-    const int line_;
-};
-
-void PosOperation::Do(Context& context) const {
-    context.position.emplace(pos_);
-    context.position.emplace(line_);
-}
-
 struct ValueOperation : Operation {
     ValueOperation(PolymorphicValue value): value_(value) {}
 
@@ -214,25 +199,23 @@ void ValueOperation::Do(Context& context) const {
 }
 
 struct VariableOperation : Operation {
-  VariableOperation(const VariableName& name): name_(name) {}
+  VariableOperation(const VariableName& name, int pos, int line): name_(name), pos_(pos), line_(line) {}
 
   void Do(Context& context) const final;
 
  private:
   const VariableName name_;
+  int pos_;
+  int line_;
 };
 
 void VariableOperation::Do(Context& context) const {
-    int pos = context.position.front();
-    context.position.pop();
-    int line = context.position.front();
-    context.position.pop();
     try {
         context.stack.emplace(context.variables.at(name_).get());
     }
     catch (std::out_of_range) {
-        throw CustomException("line " + std::to_string(line) + ":" +
-        std::to_string(pos) + ": NameError: name '" + name_ +"' is not defined");
+        throw CustomException("line " + std::to_string(line_) + ":" +
+        std::to_string(pos_) + ": NameError: name '" + name_ +"' is not defined");
     }
 
 }
