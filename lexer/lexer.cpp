@@ -213,13 +213,6 @@ bool Lexer::Initial(Lexer::Char c) {
 		return false;
 	}
 
-	if (c == '\\') {
-		state_ = &Lexer::LineBreak;
-		lexeme_.type = Lexeme::BackSlash;
-		lexeme_.value = c;
-		return true; 
-	}
-
 	auto sep = kSingleSeparators.find(c);
 	if (sep != kSingleSeparators.end()) {
 		lexeme_.type = sep->second;

@@ -5,7 +5,7 @@ polymorphic.cpp
 test 
 test.cpp
 .DS_Store
-interpreter
+python
 
 *.py
 *.txt

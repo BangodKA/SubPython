@@ -74,7 +74,6 @@ std::ostream& operator<<(std::ostream& out, const Lexeme::LexemeType& type) {
 	case Lexeme::IndentSpace:
 	case Lexeme::Comma:
     case Lexeme::Colon:
-	case Lexeme::BackSlash:
 	case Lexeme::While:
 	case Lexeme::For:
 	case Lexeme::Break:

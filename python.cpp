@@ -9,7 +9,7 @@
 
 #include "parser/parser.hpp"
 
-int main(int argc, char* argv[]) {
+int Python(int argc, char* argv[]) {
 	if (argc != 2) {
     	std::cerr << "expected argument" << std::endl;
     	return 1;
@@ -37,6 +37,8 @@ int main(int argc, char* argv[]) {
 		std::cerr << e.what() << std::endl;
 		return 1;
 	}
+}
 
-	return 0;
+int main(int argc, char* argv[]) {
+	return Python(argc, argv);
 }
