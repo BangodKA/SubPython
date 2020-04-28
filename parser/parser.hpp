@@ -17,10 +17,10 @@ class Parser{
  public:
 	explicit Parser(std::istream& input);
 	Operations operations;
-	void Run(Context& context);
+	void Run();
 
  private:
- 	
+
 	Lexer lexer_;
 	std::stack<int> indents;
 	std::stack<ValueType> operand_types;
@@ -28,42 +28,61 @@ class Parser{
 	std::stack<const execution::OperationIndex> breaks;
 	std::unordered_map<VariableName, ValueType> var_types;
 
+	std::tuple<ValueType, ValueType> PrepOperation();
+
+	void PostOp(std::stack<ValueType> &operand_types, ValueType op1, ValueType op2 = Logic);
+
 	std::string TypeToString(Lexeme::LexemeType type) const;
 
-	void PostOp(std::stack<ValueType> &operand_types, ValueType op1, ValueType op2 = Int);
+	void CheckLexeme(Lexeme::LexemeType type);
 
-	void ProcessUnaryTypeExceptions(ValueType op1, Lexeme::LexemeType type);
+	int ProcessLoop(const execution::OperationIndex label_if, const execution::OperationIndex if_index);
+
+	void ProcessUnaryTypeExceptions(ValueType op, Lexeme::LexemeType type);
 	void ProcessBinaryTypeExceptions(ValueType op1, ValueType op2, Lexeme::LexemeType type);
+
+	std::tuple<ValueType, ValueType> AddBinaryOperation(Lexeme::LexemeType type);
+	ValueType AddUnaryOperation(Lexeme::LexemeType type);
 
 	int IndentCounter();
 
-	int Block(Context& context);
+	int Block();
+	int BlockParts();
+	int ExprParts();
 
 	// For
-	int ForBlock(Context& context);
-	void Range(Context& context);
-	void Interval(Context& context);
+	int ForBlock();
+	const execution::OperationIndex PrepForLoopParams(Lexeme lex);
+	void Range();
+	void Interval();
 
 	// If
-	int IfBlock(Context& context);
-	int ElseBlock(Context& context);
+	int IfBlock();
+	int ElseBlock();
 
 	// While
-	int WhileBlock(Context& context);
+	int WhileBlock();
+
+	void CheckBreak();
+	void CheckContinue();
 	
-	int InnerBlock(Context& context);
+	// Inner Parts
+	int InnerBlock();
+	int ProcessInnerBlock(int indent);
 
-	void Print(Context& context);
+	void Print();
+	int GatherPrints();
+	void PrintGathered(int comma_cnt);
 
-	void Assign(Context& context);
+	void Assign();
 
-	void Expression(Context& context);
-	void OrParts(Context& context);
-	void AndParts(Context& context);
-	void LogicalParts(Context& context);
-	void CompParts(Context& context);
-	void SumParts(Context& context);
-	void MultParts(Context& context);
-	void Cast(Context& context);
-	void Members(Context& context);
+	void Expression();
+	void OrParts();
+	void AndParts();
+	void LogicalParts();
+	void CompParts();
+	void SumParts();
+	void MultParts();
+	void Cast();
+	void Members();
 };

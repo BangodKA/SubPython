@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
 
 		execution::Context context;
 		Parser parser(input);
-		parser.Run(context);
+		parser.Run();
 		
 		while (context.operation_index < parser.operations.size()) {
 			// context.Show(std::cout);

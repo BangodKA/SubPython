@@ -365,11 +365,6 @@ struct PrintOperation : Operation {
     void Do(Context& context) const final;
 };
 
-template<typename T>
-struct PrintStrOperation : Operation {
-    void Do(Context& context) const final;
-};
-
 using Operations = std::vector<std::shared_ptr<Operation>>;
 
 using OperationType = Lexeme::LexemeType;

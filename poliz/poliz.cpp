@@ -751,24 +751,6 @@ void PrintOperation<T>::Do(Context& context) const {
 	std::cout << static_cast<T>(op.Get()) << std::endl;
 }
 
-template<typename T>
-struct PrintStrOperation : Operation {
-    void Do(Context& context) const final;
-};
-
-template<typename T>
-void PrintStrOperation<T>::Do(Context& context) const {
-    StackValue op = context.stack.top();
-    context.stack.pop();
-    std::string str = static_cast<T>(op.Get());
-    if (str == "\n") {
-        std::cout << std::endl;
-    }
-    else {
-	    std::cout << str << ' ';
-    }
-}
-
 using Operations = std::vector<std::shared_ptr<Operation>>;
 
 using OperationType = Lexeme::LexemeType;
