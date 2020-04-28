@@ -92,7 +92,6 @@ class PolymorphicValue {
 };
 
 using VariableName = std::string;
-// using VariableValue = int;
 
 struct Variable {
 	VariableName name;
@@ -110,8 +109,6 @@ class StackValue {
 	PolymorphicValue Get() const;
 
     StackValue SetValue(const StackValue& value);
-
-	std::ostream& ShowEx(std::ostream& out) const;
 
   private:
     Variable* variable_;
@@ -133,7 +130,6 @@ struct Context {
 	std::ostream& Show(std::ostream& out) const;
 
 };
-
 
 struct Operation {
 	virtual ~Operation() {}
@@ -176,10 +172,6 @@ struct AddOneOperation : Operation {
   	const VariableName name_;
 };
 
-struct AddForVarOperation : Operation {
-  	void Do(Context& context) const final;
-};
-
 struct GoOperation : Operation {
 	GoOperation(OperationIndex index): index_(index) {}
 
@@ -196,19 +188,8 @@ struct IfOperation : GoOperation {
 	void Do(Context& context) const final;
 };
 
-struct PopOperation : Operation {
-  	void Do(Context& context) const final;
-};
-
 struct ThrowCustomException : Operation {
 	ThrowCustomException(std::string str) : str_(str) {} 
-  	void Do(Context& context) const final;
-  private:
-	std::string str_;
-};
-
-struct ThrowInvalidArgument : Operation {
-	ThrowInvalidArgument(std::string str) : str_(str) {} 
   	void Do(Context& context) const final;
   private:
 	std::string str_;

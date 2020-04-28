@@ -388,14 +388,10 @@ void Parser::Range() {
 	lexer_.TakeLexeme();
 	Interval();
 
-	std::tuple<ValueType, ValueType> ops = PrepOperation();
-	try {
-		operations.emplace_back(execution::kBinaries.at(std::make_tuple(
-			Lexeme::Range, std::get<1>(ops), std::get<0>(ops)))());
-	}
-	catch (std::out_of_range) {
-		ProcessBinaryTypeExceptions(std::get<1>(ops), std::get<0>(ops), Lexeme::Range);
-	}
+
+
+	std::tuple<ValueType, ValueType> ops = AddBinaryOperation(Lexeme::Range);
+	
 	operand_types.emplace(std::get<1>(ops));
 	operand_types.emplace(std::get<0>(ops));
 	

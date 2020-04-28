@@ -23,16 +23,15 @@ int main(int argc, char* argv[]) {
 		parser.Run();
 		
 		while (context.operation_index < parser.operations.size()) {
-			// context.Show(std::cout);
 			const auto& operation = parser.operations[context.operation_index];
 			++context.operation_index;
 			operation->Do(context);
 		} 
-		// context.Show(std::cout);
     	return 0;
 	}
 	catch (CustomException& e) {
 		std::cerr << e.what();
+		return 1;
 	}
 	catch (const std::exception& e) {
 		std::cerr << e.what() << std::endl;

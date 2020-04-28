@@ -81,11 +81,11 @@ class PolymorphicValue {
     operator int() const { CheckIs(Int); return integral_; }
     operator double() const { CheckIs(Real); return real_; }
     operator bool() const;
+    
+    ValueType GetType();
 
-	ValueType type_;
-    
   private:
-    
+    ValueType type_;
     std::string str_;
     int integral_ = 0;
     double real_ = 0.0;
@@ -136,38 +136,11 @@ class StackValue {
 
     StackValue SetValue(const StackValue& value);
 
-	std::ostream& ShowEx(std::ostream& out) const;
-
   private:
     Variable* variable_;
     PolymorphicValue value_;
 
 };
-
-std::ostream& StackValue::ShowEx(std::ostream& out) const {
-    if (variable_) {
-      	out << "&" << variable_->name;
-    } 
-	else {
-		switch (value_.type_) {
-		case Int:
-			out << int(value_);
-			break;
-		case Real:
-			out << double(value_);
-			break;
-		case Logic:
-			out << bool(value_);
-			break;
-		case Str:
-			out << std::string(value_);
-			break;
-		default:
-			break;
-		}
-    }
-    return out;
-}
 
 StackValue StackValue::SetValue(const StackValue& value) {
     if (!variable_) {
@@ -193,53 +166,6 @@ struct Context {
 	std::ostream& Show(std::ostream& out) const;
 
 };
-
-std::ostream& Context::Show(std::ostream& out) const {
-    out << "index = " << std::setw(2) << operation_index;
-
-    out << ", variables = {";
-    bool first = true;
-    for (const auto& [name, variable] : variables) {
-      if (first) {
-        first = false;
-      } else {
-        out << ", ";
-      }
-	//   auto variable = std::get<0>(var).get();
-	  ValueType type = variable->value.type_;
-	  switch (variable->value.type_) {
-		case Int:
-			out << ToStringSem(type) << ' ' << name << " = " <<  int(variable->value);
-			break;
-		case Real:
-			out << ToStringSem(type) << ' ' << name << " = " << double(variable->value);
-			break;
-		case Logic:
-			out << ToStringSem(type) << ' ' << name << " = " << bool(variable->value);
-			break;
-		case Str:
-			out << ToStringSem(type) << ' ' << name << " = " << std::string(variable->value);
-			break;
-		default:
-			break;
-		}
-    }
-    out << "}";
-
-    out << ", stack = [";
-    first = true;
-    for (const StackValue& value : DumpStack()) {
-      if (first) {
-        first = false;
-      } else {
-        out << ", ";
-      }
-      value.ShowEx(out);
-    }
-
-    out << "]" << std::endl;
-    return out;
-  }
 
 std::vector<StackValue> Context::DumpStack() const {
     std::vector<StackValue> result;
@@ -280,9 +206,14 @@ struct VariableOperation : Operation {
 };
 
 void VariableOperation::Do(Context& context) const {
-    context.stack.emplace(context.variables.at(name_).get());
-}
+    try {
+        context.stack.emplace(context.variables.at(name_).get());
+    }
+    catch (std::out_of_range) {
+        throw CustomException("NameError: name '" + name_ +"' is not defined");
+    }
 
+}
 
 struct AssignOperation : Operation {
   	AssignOperation(const VariableName& name): name_(name) {}
@@ -316,23 +247,6 @@ void AddOneOperation::Do(Context& context) const {
 	context.variables[name_].reset(new Variable(name_, int(value.Get()) + 1));
 }
 
-
-struct AddForVarOperation : Operation {
-  	void Do(Context& context) const final;
-};
-
-void AddForVarOperation::Do(Context& context) const {
-	StackValue op2 = context.stack.top();
-	context.stack.pop();
-
-	StackValue op1 = context.stack.top();
-	context.stack.pop();
-
-	context.variables[op1.Get()].reset(new Variable(op1.Get(), op2.Get()));
-
-	context.stack.push(op1.SetValue(op2));
-}
-
 struct GoOperation : Operation {
 	GoOperation(OperationIndex index): index_(index) {}
 
@@ -361,14 +275,6 @@ void IfOperation::Do(Context& context) const {
 	}
 }
 
-struct PopOperation : Operation {
-  	void Do(Context& context) const final;
-};
-
-void PopOperation::Do(Context& context) const {
-    context.stack.pop();
-}
-
 struct ThrowCustomException : Operation {
 	ThrowCustomException(std::string str) : str_(str) {} 
   	void Do(Context& context) const final;
@@ -377,17 +283,6 @@ struct ThrowCustomException : Operation {
 };
 
 void ThrowCustomException::Do(Context& context) const {
-    throw CustomException(str_);
-}
-
-struct ThrowTypeError : Operation {
-	ThrowTypeError(std::string str) : str_(str) {} 
-  	void Do(Context& context) const final;
-  private:
-	std::string str_;
-};
-
-void ThrowTypeError::Do(Context& context) const {
     throw CustomException(str_);
 }
 
