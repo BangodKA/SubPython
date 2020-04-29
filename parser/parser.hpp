@@ -10,7 +10,7 @@
 #include <stack>
 #include <map>
 
-// #include "../lexer/lexer.hpp"
+// #include "../lexer/lexer.hpp" // todo -
 #include "../poliz/poliz.hpp"
 
 using namespace execution;
@@ -67,7 +67,7 @@ class Parser{
 
 	void CheckBreak();
 	void CheckContinue();
-	
+
 	// Inner Parts
 	int InnerBlock();
 	int ProcessInnerBlock(int indent);

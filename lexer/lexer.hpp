@@ -11,6 +11,7 @@ class Lexer {
   public:
 	explicit Lexer(std::istream& input);
 
+	// todo - private, не static
 	static int line;
 	static int pos;
 
@@ -44,7 +45,7 @@ class Lexer {
 	bool SignEFloat(Char c);
 	bool EFloat(Char c);
 	bool FullEFloat(Char c);
-	
+
 	// Variable/Keywords
 	bool Variable(Char c);
 

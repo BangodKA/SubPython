@@ -43,7 +43,7 @@ class Lexer {
 	bool SignEFloat(Char c);
 	bool EFloat(Char c);
 	bool FullEFloat(Char c);
-	
+
 	// Variable/Keywords
 	bool Variable(Char c);
 
@@ -80,7 +80,7 @@ inline bool Lexer::IsVar(Char c) {
 }
 
 inline bool Lexer::IsRelevant(Char c) {
-	return (c >= 32 && c <= 127) || c == 10 || c == 13 || c == 9;
+	return (c >= 32 && c <= 127) || c == '\n' || c == '\n' || c == 9;
 }
 
 
@@ -116,7 +116,7 @@ const std::unordered_map<std::string, Lexeme::LexemeType> Lexer::ReservedWords {
     {"int", Lexeme::Int},
 	{"str", Lexeme::Str},
 	{"float", Lexeme::Float},
-	{"while", Lexeme::While}, 
+	{"while", Lexeme::While},
 	{"for", Lexeme::For},
 	{"break", Lexeme::Break},
 	{"continue", Lexeme::Continue},
@@ -262,13 +262,14 @@ bool Lexer::Initial(Lexer::Char c) {
 	}
 
 	if (c == '#') {
+		// todo - fix
 		state_ = &Lexer::LineStart;
 		while (c != '\n' && c != std::istream::traits_type::eof()) c = input_.get();
 		Unget();
 		return false;
 	}
 
-	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) + 
+	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) +
 				": LexicalError invalid character " + std::string(1, c));
 }
 
@@ -280,7 +281,7 @@ bool Lexer::LineBreak(Lexer::Char c) {
 		return true;
 	}
 
-	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) + 
+	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) +
 				": LexicalError invalid character " + std::string(1, c));
 }
 
@@ -315,7 +316,7 @@ bool Lexer::NoIntegerPart(Lexer::Char c) {
 		return false;
 	}
 
-	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) + 
+	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) +
 				": LexicalError invalid character " + std::string(1, c));
 }
 
@@ -395,7 +396,7 @@ bool Lexer::SignEFloat(Lexer::Char c) {
 		return false;
 	}
 
-	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) + 
+	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) +
 				": LexicalError invalid character " + std::string(1, c));
 }
 
@@ -406,7 +407,7 @@ bool Lexer::EFloat(Lexer::Char c) {
 		return false;
 	}
 
-	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) + 
+	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) +
 				": LexicalError invalid character " + std::string(1, c));
 }
 
@@ -460,11 +461,11 @@ bool Lexer::String(Lexer::Char c) {
 	}
 
 	if (!IsRelevant(c)) {
-		throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) + 
+		throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) +
 				": LexicalError invalid character " + std::string(1, c));
 	}
 
-	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos - 1) + 
+	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos - 1) +
 			": lexical : missing terminating " + std::string(1, lexeme_.value[0]) + " character");
 }
 

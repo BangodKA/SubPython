@@ -54,11 +54,11 @@
 {{op, Logic, Logic}, &MakeOp<opfunc<bool, bool>>},
 
 struct CustomException : public std::exception {
-	CustomException(std::string str) : str_(str) {}
-	const char * what () const throw () {
-		return (str_ + "\n").c_str();
+	explicit CustomException(std::string str) : str_(str) {}
+	const char * what () const noexcept {
+		return str_.c_str();
 	}
-  private:
+ private:
 	std::string str_;
 };
 
@@ -80,7 +80,7 @@ class PolymorphicValue {
     operator int() const { CheckIs(Int); return integral_; }
     operator double() const { CheckIs(Real); return real_; }
     operator bool() const;
-    
+
   private:
 	ValueType type_;
     std::string str_;
@@ -114,7 +114,7 @@ class StackValue {
     Variable* variable_;
     PolymorphicValue value_;
 
-    
+
 };
 
 
@@ -191,7 +191,7 @@ struct IfOperation : GoOperation {
 };
 
 struct ThrowCustomException : Operation {
-	ThrowCustomException(std::string str) : str_(str) {} 
+	ThrowCustomException(std::string str) : str_(str) {}
   	void Do(Context& context) const final;
   private:
 	std::string str_;
@@ -375,7 +375,7 @@ static const std::map<UnaryKey, std::shared_ptr<Operation>> kUnaries {
 	{{Lexeme::Int, Str}, std::shared_ptr<Operation>(new IntStrCast<std::string>)},
 	{{Lexeme::Float, Str}, std::shared_ptr<Operation>(new FloatStrCast<std::string>)},
 	{{Lexeme::Str, Str}, std::shared_ptr<Operation>(new StrStrCast<std::string>)},
-  
+
 };
 
 using BinaryKey = std::tuple<OperationType, ValueType, ValueType>;
