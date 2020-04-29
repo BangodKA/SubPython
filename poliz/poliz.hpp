@@ -79,7 +79,9 @@ class PolymorphicValue {
     operator std::string() const { CheckIs(Str); return str_; }
     operator int() const { CheckIs(Int); return integral_; }
     operator double() const { CheckIs(Real); return real_; }
-    operator bool() const;
+    operator bool() const { CheckIs(Logic); return logic_; }
+
+	ValueType GetType();
 
   private:
 	ValueType type_;
@@ -303,47 +305,29 @@ struct OrOperation : MathOperation {
     StackValue DoMath(StackValue op1, StackValue op2) const final;
 };
 
-template<typename T>
 struct BoolCast : Operation {
     void Do(Context& context) const final;
 };
 
-template<typename T>
-struct BoolStrCast : Operation {
-    void Do(Context& context) const final;
-};
-
-template<typename T>
 struct IntCast : Operation {
     void Do(Context& context) const final;
 };
 
-template<typename T>
-struct IntStrCast : Operation {
-    void Do(Context& context) const final;
-};
-
-template<typename T>
 struct FloatCast : Operation {
     void Do(Context& context) const final;
 };
 
-template<typename T>
-struct FloatStrCast : Operation {
-    void Do(Context& context) const final;
-};
-
-template<typename T>
 struct StrCast : Operation {
     void Do(Context& context) const final;
 };
 
-template<typename T>
-struct StrStrCast : Operation {
+struct Cast : Operation {
+    Cast(Lexeme::LexemeType cast_type): cast_type_(cast_type) {}
     void Do(Context& context) const final;
+ private:
+    Lexeme::LexemeType cast_type_;
 };
 
-template<typename T>
 struct PrintOperation : Operation {
     void Do(Context& context) const final;
 };
@@ -361,20 +345,16 @@ using UnaryKey = std::tuple<OperationType, ValueType>;
 
 static const std::map<UnaryKey, std::shared_ptr<Operation>> kUnaries {
 	UnaryNoStr(UnaryMinus, UnaryMinusOperation)
-	UnaryNoStr(Bool, BoolCast)
-	UnaryNoStr(Int, IntCast)
-	UnaryNoStr(Float, FloatCast)
-	UnaryNoStr(Str, StrCast)
+	// UnaryNoStr(Bool, BoolCast)
+	// UnaryNoStr(Int, IntCast)
+	// UnaryNoStr(Float, FloatCast)
 
-	UnaryNoStr(Print, PrintOperation)
 	UnaryNoStr(Not, NotOperation)
 
 	{{Lexeme::Not, Str}, std::shared_ptr<Operation>(new NotStrOperation<std::string>)},
-	{{Lexeme::Print, Str}, std::shared_ptr<Operation>(new PrintOperation<std::string>)},
-	{{Lexeme::Bool, Str}, std::shared_ptr<Operation>(new BoolStrCast<std::string>)},
-	{{Lexeme::Int, Str}, std::shared_ptr<Operation>(new IntStrCast<std::string>)},
-	{{Lexeme::Float, Str}, std::shared_ptr<Operation>(new FloatStrCast<std::string>)},
-	{{Lexeme::Str, Str}, std::shared_ptr<Operation>(new StrStrCast<std::string>)},
+	// {{Lexeme::Bool, Str}, std::shared_ptr<Operation>(new BoolStrCast<std::string>)},
+	// {{Lexeme::Int, Str}, std::shared_ptr<Operation>(new IntStrCast<std::string>)},
+	// {{Lexeme::Float, Str}, std::shared_ptr<Operation>(new FloatStrCast<std::string>)},
 
 };
 

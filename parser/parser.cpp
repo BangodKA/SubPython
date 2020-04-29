@@ -537,7 +537,8 @@ void Parser::Print() {
 		if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::RightParenthesis) {
 			lexer_.TakeLexeme();
 			operations.emplace_back(new execution::ValueOperation(""));
-				operations.emplace_back(kUnaries.at(std::make_tuple(Lexeme::Print, Str)));
+				// operations.emplace_back(kUnaries.at(std::make_tuple(Lexeme::Print, Str)));
+				operations.emplace_back(new execution::PrintOperation());
 			return;
 		}
 		Expression();
@@ -560,7 +561,8 @@ int Parser::GatherPrints() {
 		comma_cnt++;
 		lexer_.TakeLexeme();
 
-		AddUnaryOperation(Lexeme::Str);
+		// AddUnaryOperation(Lexeme::Str);
+		operations.emplace_back(new execution::StrCast());
 
 		operations.emplace_back(new execution::ValueOperation(" "));
 		Expression();
@@ -572,13 +574,15 @@ void Parser::PrintGathered(int comma_cnt) {
 	lexer_.TakeLexeme();
 	ValueType op = operand_types.top();
 	operand_types.pop();
-	operations.emplace_back(execution::kUnaries.at(std::make_tuple(Lexeme::Str, op)));
+	if (comma_cnt) {
+		operations.emplace_back(new execution::StrCast());
+	}
 
 	for (int i = 0; i < comma_cnt * 2; ++i) {
 		operations.emplace_back(execution::kBinaries.at(std::make_tuple(Lexeme::Add, Str, Str))());
 	}
 
-	operations.emplace_back(kUnaries.at(std::make_tuple(Lexeme::Print, Str)));
+	operations.emplace_back(new execution::PrintOperation());
 }
 
 void Parser::Assign() {
@@ -744,7 +748,9 @@ void Parser::Cast() {
 				ValueType op = operand_types.top();
 				operand_types.pop();
 
-				operations.emplace_back(kUnaries.at(std::make_tuple(cast_type, op)));
+				operations.emplace_back(new execution::Cast(cast_type));
+				
+				// operations.emplace_back(kUnaries.at(std::make_tuple(cast_type, op)));
 				switch (cast_type) {
 					case Lexeme::Bool:
 						operand_types.emplace(Logic);

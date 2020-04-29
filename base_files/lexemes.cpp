@@ -2,7 +2,8 @@
 
 Lexeme::operator bool() const {
     assert (type == BoolConst);
-    return (value == "True");
+    bool result = value == "True" ? true : false;
+    return result;
 }
 
 Lexeme::operator double() const {

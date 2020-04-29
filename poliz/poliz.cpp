@@ -81,7 +81,7 @@ class PolymorphicValue {
     operator std::string() const { CheckIs(Str); return str_; }
     operator int() const { CheckIs(Int); return integral_; }
     operator double() const { CheckIs(Real); return real_; }
-    operator bool() const;
+    operator bool() const { CheckIs(Logic); return logic_; }
     
     ValueType GetType();
 
@@ -95,21 +95,25 @@ class PolymorphicValue {
     void CheckIs(ValueType type) const;
 };
 
-PolymorphicValue::operator bool() const {
-	if (type_ == Logic) {
-		return logic_;
-	}
-	else if (type_ == Int) {
-		return integral_;
-	}
-	else if (type_ == Str) {
-		if (str_ == "") {
-			return false;
-		}
-		return true;
-	}
-	return real_;	
+ValueType PolymorphicValue::GetType() {
+    return type_;
 }
+
+// PolymorphicValue::operator bool() const {
+// 	if (type_ == Logic) {
+// 		return logic_;
+// 	}
+// 	else if (type_ == Int) {
+// 		return integral_;
+// 	}
+// 	else if (type_ == Str) {
+// 		if (str_ == "") {
+// 			return false;
+// 		}
+// 		return true;
+// 	}
+// 	return real_;	
+// }
 
 void PolymorphicValue::CheckIs(ValueType type) const {
 	if (type != type_) {
@@ -535,120 +539,162 @@ StackValue OrOperation<T1, T2>::DoMath(StackValue op1, StackValue op2) const {
     return StackValue(static_cast<T1>(op1.Get()) || static_cast<T2>(op2.Get()));
 }
 
-template<typename T>
 struct BoolCast : Operation {
     void Do(Context& context) const final;
 };
 
-template<typename T>
-void BoolCast<T>::Do(Context& context) const {
+void BoolCast::Do(Context& context) const {
     StackValue op = context.stack.top();
     context.stack.pop();
-	  context.stack.emplace(bool(static_cast<T>(op.Get())));
-}
-
-template<typename T>
-struct BoolStrCast : Operation {
-    void Do(Context& context) const final;
-};
-
-template<typename T>
-void BoolStrCast<T>::Do(Context& context) const {
-    StackValue op = context.stack.top();
-    context.stack.pop();
-    if (static_cast<T>(op.Get()) != "") {
-      	context.stack.emplace(true);
-    }
-    else {
-      	context.stack.emplace(false);
+	switch (op.Get().GetType()) {
+        case Logic:
+            context.stack.emplace(bool(op.Get()));
+            break;
+        case Str:
+            std::string(op.Get()) == "" ? context.stack.emplace(false) : context.stack.emplace(true);
+            break;
+        case Int:
+            int(op.Get()) == 0 ? context.stack.emplace(false) : context.stack.emplace(true);
+            break;
+        case Real:
+            double(op.Get()) == 0 ? context.stack.emplace(false) : context.stack.emplace(true);
+            break;
+        default:
+            break;
     }
 }
 
-template<typename T>
 struct IntCast : Operation {
     void Do(Context& context) const final;
 };
 
-template<typename T>
-void IntCast<T>::Do(Context& context) const {
+void IntCast::Do(Context& context) const {
     StackValue op = context.stack.top();
     context.stack.pop();
-	context.stack.emplace(int(static_cast<T>(op.Get())));
+	switch (op.Get().GetType()) {
+        case Logic:
+            context.stack.emplace(int(bool(op.Get())));
+            break;
+        case Str:
+            context.stack.emplace(std::stoi(std::string(op.Get())));
+            break;
+        case Int:
+            context.stack.emplace(int(op.Get()));
+            break;
+        case Real:
+            context.stack.emplace(int(double(op.Get())));
+            break;
+        default:
+            break;
+    }
 }
 
-template<typename T>
-struct IntStrCast : Operation {
-    void Do(Context& context) const final;
-};
-
-template<typename T>
-void IntStrCast<T>::Do(Context& context) const {
-    StackValue op = context.stack.top();
-    context.stack.pop();
-	std::string op_str = static_cast<T>(op.Get());
-
-    context.stack.emplace(std::stoi(op_str));
-}
-
-template<typename T>
 struct FloatCast : Operation {
     void Do(Context& context) const final;
 };
 
-template<typename T>
-void FloatCast<T>::Do(Context& context) const {
+void FloatCast::Do(Context& context) const {
     StackValue op = context.stack.top();
     context.stack.pop();
-	context.stack.emplace(float(static_cast<T>(op.Get())));
+    switch (op.Get().GetType()) {
+        case Logic:
+            context.stack.emplace(double(bool(op.Get())));
+            break;
+        case Str:
+            if (std::string(op.Get()) == "True" || std::string(op.Get()) == "False") {
+                std::string(op.Get()) == "False" ? context.stack.emplace(0.0) : context.stack.emplace(1.0);
+                break;
+            }
+            context.stack.emplace(std::stod(std::string(op.Get())));
+            break;
+        case Int:
+            context.stack.emplace(double(int(op.Get())));
+            break;
+        case Real:
+            context.stack.emplace(double(op.Get()));
+            break;
+        default:
+            break;
+    }
 }
 
-template<typename T>
-struct FloatStrCast : Operation {
-    void Do(Context& context) const final;
-};
-
-template<typename T>
-void FloatStrCast<T>::Do(Context& context) const {
-    StackValue op = context.stack.top();
-    context.stack.pop();
-	std::string op_str = static_cast<T>(op.Get());
-
-    context.stack.emplace(std::stof(op_str));
-}
-
-template<typename T>
 struct StrCast : Operation {
     void Do(Context& context) const final;
 };
 
-template<typename T>
-void StrCast<T>::Do(Context& context) const {
+void StrCast::Do(Context& context) const {
     StackValue op = context.stack.top();
     context.stack.pop();
-	context.stack.emplace(std::to_string(static_cast<T>(op.Get())));
+    switch (op.Get().GetType())
+    {
+    case Logic:
+        bool(op.Get()) == false ? context.stack.emplace("False") : context.stack.emplace("True");
+        break;
+    case Str:
+        context.stack.emplace(std::string(op.Get()));
+        break;
+    case Int:
+        context.stack.emplace(std::to_string(int(op.Get())));
+        break;
+    case Real:
+        context.stack.emplace(std::to_string(double(op.Get())));
+        break;
+    default:
+        break;
+    }
 }
 
-template<typename T>
-struct StrStrCast : Operation {
+struct Cast : Operation {
+    Cast(Lexeme::LexemeType cast_type): cast_type_(cast_type) {}
     void Do(Context& context) const final;
+ private:
+    Lexeme::LexemeType cast_type_;
 };
 
-template<typename T>
-void StrStrCast<T>::Do(Context& context) const {
-    return;
+void Cast::Do(Context& context) const {
+    switch (cast_type_) {
+        case Lexeme::Str:
+            StrCast().Do(context);
+            break;
+        case Lexeme::Float:
+            FloatCast().Do(context);
+            break;
+        case Lexeme::Bool:
+            BoolCast().Do(context);
+            break;
+        case Lexeme::Int:
+            IntCast().Do(context);
+            break;
+        default:
+            break;
+    }
 }
 
-template<typename T>
 struct PrintOperation : Operation {
     void Do(Context& context) const final;
 };
 
-template<typename T>
-void PrintOperation<T>::Do(Context& context) const {
+
+void PrintOperation::Do(Context& context) const {
     StackValue op = context.stack.top();
     context.stack.pop();
-
-	std::cout << static_cast<T>(op.Get()) << std::endl;
+    switch (op.Get().GetType()) {
+        case Logic:
+            std::cout << (bool(op.Get()) == 1 ? "True" : "False") << std::endl;
+            break;
+        case Str:
+            std::cout << std::string(op.Get()) << std::endl;
+            break;
+        case Int:
+            std::cout << int(op.Get()) << std::endl;
+            break;
+        case Real:
+            std::cout << double(op.Get()) << std::endl;
+            break;
+        default:
+            break;
+    }
+	
 }
 
 using Operations = std::vector<std::shared_ptr<Operation>>;
@@ -666,20 +712,18 @@ using UnaryKey = std::tuple<OperationType, ValueType>;
 
 static const std::map<UnaryKey, std::shared_ptr<Operation>> kUnaries {
 	UnaryNoStr(UnaryMinus, UnaryMinusOperation)
-	UnaryNoStr(Bool, BoolCast)
-	UnaryNoStr(Int, IntCast)
-	UnaryNoStr(Float, FloatCast)
-	UnaryNoStr(Str, StrCast)
+	// UnaryNoStr(Bool, BoolCast)
+	// UnaryNoStr(Int, IntCast)
+	// UnaryNoStr(Float, FloatCast)
+	// UnaryNoStr(Str, StrCast)
 
-	UnaryNoStr(Print, PrintOperation)
 	UnaryNoStr(Not, NotOperation)
 
 	{{Lexeme::Not, Str}, std::shared_ptr<Operation>(new NotStrOperation<std::string>)},
-	{{Lexeme::Print, Str}, std::shared_ptr<Operation>(new PrintOperation<std::string>)},
-	{{Lexeme::Bool, Str}, std::shared_ptr<Operation>(new BoolStrCast<std::string>)},
-	{{Lexeme::Int, Str}, std::shared_ptr<Operation>(new IntStrCast<std::string>)},
-	{{Lexeme::Float, Str}, std::shared_ptr<Operation>(new FloatStrCast<std::string>)},
-	{{Lexeme::Str, Str}, std::shared_ptr<Operation>(new StrStrCast<std::string>)},
+	// {{Lexeme::Bool, Str}, std::shared_ptr<Operation>(new BoolStrCast<std::string>)},
+	// {{Lexeme::Int, Str}, std::shared_ptr<Operation>(new IntStrCast<std::string>)},
+	// {{Lexeme::Float, Str}, std::shared_ptr<Operation>(new FloatStrCast<std::string>)},
+	// {{Lexeme::Str, Str}, std::shared_ptr<Operation>(new StrStrCast<std::string>)},
   
 };
 
