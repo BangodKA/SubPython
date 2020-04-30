@@ -14,11 +14,6 @@
 
 #include "../lexer/lexer.hpp"
 
-#define UnaryNoStr(op, opfunc)\
-{{Lexeme::op, Int}, std::shared_ptr<Operation>(new opfunc<int>)},\
-{{Lexeme::op, Real}, std::shared_ptr<Operation>(new opfunc<double>)},\
-{{Lexeme::op, Logic}, std::shared_ptr<Operation>(new opfunc<bool>)},\
-
 #define NumOperation(op, opfunc)\
 {{op, Int, Int}, std::shared_ptr<MathOperation>(new opfunc<int, int>)},\
 {{op, Int, Real}, std::shared_ptr<MathOperation>(new opfunc<int, double>)},\
@@ -52,15 +47,6 @@
 {{op, Logic, Int}, std::shared_ptr<MathOperation>(new opfunc<bool, int>)},\
 {{op, Int, Logic}, std::shared_ptr<MathOperation>(new opfunc<int, bool>)},\
 {{op, Logic, Logic}, std::shared_ptr<MathOperation>(new opfunc<bool, bool>)},
-
-struct CustomException : public std::exception {
-	explicit CustomException(std::string str) : str_(str) {}
-	const char * what () const noexcept {
-		return str_.c_str();
-	}
- private:
-	std::string str_;
-};
 
 namespace execution {
 
@@ -192,14 +178,6 @@ struct IfOperation : GoOperation {
 	void Do(Context& context) const final;
 };
 
-struct ThrowCustomException : Operation {
-	ThrowCustomException(std::string str) : str_(str) {}
-  	void Do(Context& context) const final;
-  private:
-	std::string str_;
-};
-
-template<typename T>
 struct UnaryMinusOperation : Operation {
   void Do(Context& context) const final;
 };
@@ -230,10 +208,12 @@ struct MathOperation : Operation {
 };
 
 struct ExecuteOperation : Operation {
-    ExecuteOperation(Lexeme::LexemeType type): type_(type) {}
+    ExecuteOperation(Lexeme::LexemeType type, int pos, int line): type_(type), pos_(pos), line_(line) {}
     void Do(Context& context) const final;
   private:
     Lexeme::LexemeType type_;
+    int pos_;
+    int line_;
 };
 
 template<typename T1, typename T2>
@@ -319,11 +299,19 @@ struct BoolCast : Operation {
 };
 
 struct IntCast : Operation {
+    IntCast(int pos, int line): pos_(pos), line_(line) {}
     void Do(Context& context) const final;
+  private:
+    int pos_;
+    int line_;
 };
 
 struct FloatCast : Operation {
+    FloatCast(int pos, int line): pos_(pos), line_(line) {}
     void Do(Context& context) const final;
+  private:
+    int pos_;
+    int line_;
 };
 
 struct StrCast : Operation {
@@ -331,10 +319,12 @@ struct StrCast : Operation {
 };
 
 struct Cast : Operation {
-    Cast(Lexeme::LexemeType cast_type): cast_type_(cast_type) {}
+    Cast(Lexeme::LexemeType cast_type, int pos, int line): cast_type_(cast_type), pos_(pos), line_(line) {}
     void Do(Context& context) const final;
  private:
     Lexeme::LexemeType cast_type_;
+    int pos_;
+    int line_;
 };
 
 struct PrintOperation : Operation {
@@ -344,12 +334,6 @@ struct PrintOperation : Operation {
 using Operations = std::vector<std::shared_ptr<Operation>>;
 
 using OperationType = Lexeme::LexemeType;
-
-using UnaryKey = std::tuple<OperationType, ValueType>;
-
-static const std::map<UnaryKey, std::shared_ptr<Operation>> kUnaries {
-	UnaryNoStr(UnaryMinus, UnaryMinusOperation)  
-};
 
 using BinaryKey = std::tuple<OperationType, ValueType, ValueType>;
 

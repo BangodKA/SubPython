@@ -9,82 +9,39 @@
 #include <vector>
 
 #include "../poliz/poliz.hpp"
+#include "parser.hpp"
 
 using namespace execution;
 
-class Parser{
- public:
-	explicit Parser(std::istream& input);
-	Operations operations;
-	void Run();
+Parser::Parser(std::istream& input): lexer_(input), indents({0}) {}
 
- private:
-
-	Lexer lexer_;
-	std::stack<int> indents;
-	std::stack<ValueType> operand_types;
-	std::stack<const execution::OperationIndex> loop_starts;
-	std::stack<const execution::OperationIndex> breaks;
-	std::unordered_map<VariableName, ValueType> var_types;
-
-	std::tuple<ValueType, ValueType> PrepOperation();
-
-	void PostOp(std::stack<ValueType> &operand_types, ValueType op1, ValueType op2 = Logic);
-
-	std::string TypeToString(Lexeme::LexemeType type) const;
-
-	void CheckLexeme(Lexeme::LexemeType type);
-
-	int ProcessLoop(const execution::OperationIndex label_if, const execution::OperationIndex if_index);
-
-	void ProcessUnaryTypeExceptions(ValueType op, Lexeme::LexemeType type);
-	void ProcessBinaryTypeExceptions(ValueType op1, ValueType op2, Lexeme::LexemeType type);
-
-	std::tuple<ValueType, ValueType> AddBinaryOperation(Lexeme::LexemeType type);
-	ValueType AddUnaryOperation(Lexeme::LexemeType type);
-
-	int IndentCounter();
-
-	int Block();
-	int BlockParts();
-	int ExprParts();
-
-	// For
-	int ForBlock();
-	const execution::OperationIndex PrepForLoopParams(Lexeme lex);
-	void Range();
-	void Interval();
-
-	// If
-	int IfBlock();
-	int ElseBlock();
-
-	// While
-	int WhileBlock();
-
-	void CheckBreak();
-	void CheckContinue();
-	
-	// Inner Parts
-	int InnerBlock();
-	int ProcessInnerBlock(int indent);
-
-	void Print();
-	int GatherPrints();
-	void PrintGathered(int comma_cnt);
-
-	void Assign();
-
-	void Expression();
-	void OrParts();
-	void AndParts();
-	void LogicalParts();
-	void CompParts();
-	void SumParts();
-	void MultParts();
-	void Cast();
-	void Members();
-};
+void Parser::Run() {
+	while (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::EOL) {
+		lexer_.TakeLexeme();
+	}
+	if (!lexer_.HasLexeme()) {
+		return;
+	}
+	if (IndentCounter() != 0) {
+		throw std::runtime_error(
+				"line " + std::to_string(Lexer::line) + ":" + 
+				std::to_string(Lexer::pos - lexer_.PeekLexeme().value.length()) + ": IndentationError: unexpected indent");
+	}
+	int next_block_indent = 0;
+	while (lexer_.HasLexeme()) {
+		if (next_block_indent != 0) {
+			throw std::runtime_error(
+				"line " + std::to_string(Lexer::line) + ":" + 
+				std::to_string(Lexer::pos - lexer_.PeekLexeme().value.length()) + ": IndentationError: unexpected indent");
+		}
+		if (lexer_.PeekLexeme().type == Lexeme::EOL) {
+			lexer_.TakeLexeme();
+		}
+		else {
+			next_block_indent = Block();
+		}
+	}
+}
 
 void Parser::CheckLexeme(Lexeme::LexemeType type) {
 	if (!lexer_.HasLexeme()) {
@@ -118,109 +75,6 @@ int Parser::ProcessLoop(const execution::OperationIndex label_if, const executio
 	operations[if_index].reset(new execution::IfOperation(label_next));
 
 	return next_block_indent;
-}
-
-Parser::Parser(std::istream& input): lexer_(input), indents({0}) {}
-
-std::string Parser::TypeToString(Lexeme::LexemeType type) const {
-	std::ostringstream oss;
-	oss << type;
-	return oss.str();
-}
-
-std::tuple<ValueType, ValueType> Parser::PrepOperation() {
-	ValueType op2 = operand_types.top();
-	operand_types.pop();
-	ValueType op1 = operand_types.top();
-	operand_types.pop();
-
-	return std::make_tuple(op2, op1);
-}
-
-void Parser::PostOp(std::stack<ValueType> &operand_types, ValueType op1, ValueType op2) {
-	if ((op1 == Str) || (op2 == Str)) {
-		operand_types.emplace(Str);
-	}
-	else if ((op1 == Real) || (op2 == Real)) {
-		operand_types.emplace(Real);
-	}
-	else if ((op1 == Int) || (op2 == Int)){
-		operand_types.emplace(Int);
-	}
-	else {
-		operand_types.emplace(Logic);
-	}
-}
-
-void Parser::Run() {
-	while (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::EOL) {
-		lexer_.TakeLexeme();
-	}
-	if (!lexer_.HasLexeme()) {
-		return;
-	}
-	if (IndentCounter() != 0) {
-		throw std::runtime_error(
-				"line " + std::to_string(Lexer::line) + ":" + 
-				std::to_string(Lexer::pos - lexer_.PeekLexeme().value.length()) + ": IndentationError: unexpected indent");
-	}
-	int next_block_indent = 0;
-	while (lexer_.HasLexeme()) {
-		if (next_block_indent != 0) {
-			throw std::runtime_error(
-				"line " + std::to_string(Lexer::line) + ":" + 
-				std::to_string(Lexer::pos - lexer_.PeekLexeme().value.length()) + ": IndentationError: unexpected indent");
-		}
-		if (lexer_.PeekLexeme().type == Lexeme::EOL) {
-			lexer_.TakeLexeme();
-		}
-		else {
-			next_block_indent = Block();
-		}
-	}
-}
-
-// std::tuple<ValueType, ValueType> Parser::AddBinaryOperation(Lexeme::LexemeType type) {
-// 	std::tuple<ValueType, ValueType> ops = PrepOperation();
-// 	try {
-// 		operations.emplace_back(execution::kBinaries.at(std::make_tuple(type, std::get<1>(ops), std::get<0>(ops))));
-// 	}
-// 	catch (std::out_of_range& e) {
-// 		ProcessBinaryTypeExceptions(std::get<1>(ops), std::get<0>(ops), type);
-// 	}
-
-// 	return ops;
-// }
-
-ValueType Parser::AddUnaryOperation(Lexeme::LexemeType type) {
-	ValueType op = operand_types.top();
-	operand_types.pop();
-	try {
-		operations.emplace_back(kUnaries.at(std::make_tuple(type, op)));
-	}
-	catch (std::out_of_range) {
-		ProcessUnaryTypeExceptions(op, type);
-	}
-	return op;
-}
-
-void Parser::ProcessUnaryTypeExceptions(ValueType op, Lexeme::LexemeType type) {
-	std::string exception_mes = "";
-	std::string unmin = "";
-	if (type == Lexeme::UnaryMinus) {
-		unmin = "unary ";
-	}
-	exception_mes = "line " + std::to_string(Lexer::line) + 
-				": TypeError: unsupported operand type(s) for " + unmin + TypeToString(type) + ": " + ToStringSem(op);
-	operations.emplace_back(new execution::ThrowCustomException(exception_mes));
-}
-
-void Parser::ProcessBinaryTypeExceptions(ValueType op1, ValueType op2, Lexeme::LexemeType type) {
-	std::string exception_mes = "";
-	exception_mes = "line " + std::to_string(Lexer::line) + 
-				": TypeError: unsupported operand type(s) for " + 
-				TypeToString(type) + ": " + ToStringSem(op1) + " and " + ToStringSem(op2);
-	operations.emplace_back(new execution::ThrowCustomException(exception_mes));
 }
 
 int Parser::IndentCounter() {
@@ -346,8 +200,7 @@ int Parser::ForBlock() {
 
 	const execution::OperationIndex label_if = PrepForLoopParams(lex);
 
-	// AddBinaryOperation(Lexeme::Less);
-	operations.emplace_back(new execution::ExecuteOperation(Lexeme::Less));
+	operations.emplace_back(new execution::ExecuteOperation(Lexeme::Less, Lexer::pos, Lexer::line));
 
 
 	const execution::OperationIndex if_index = operations.size();
@@ -359,7 +212,6 @@ int Parser::ForBlock() {
 
 const execution::OperationIndex Parser::PrepForLoopParams(Lexeme lex) {
 	operations.emplace_back(new execution::AssignOperation(lex.value));
-	var_types.insert_or_assign(lex.value, operand_types.top());
 
 	const execution::OperationIndex go_index = operations.size();
 	operations.emplace_back(nullptr);
@@ -377,9 +229,6 @@ const execution::OperationIndex Parser::PrepForLoopParams(Lexeme lex) {
 	operations.emplace_back(new execution::VariableOperation(
 		"edge" + std::to_string(loop_starts.size() - 1), Lexer::pos, Lexer::line));
 
-	operand_types.emplace(Int);
-	operand_types.emplace(Int);
-
 	return label_if;
 }
 
@@ -391,14 +240,9 @@ void Parser::Range() {
 	Interval();
 
 	operations.emplace_back(new execution::GetRangeOperation(Lexer::pos, Lexer::line));
-	// std::tuple<ValueType, ValueType> ops = AddBinaryOperation(Lexeme::Range);
-	
-	// operand_types.emplace(std::get<1>(ops));
-	// operand_types.emplace(std::get<0>(ops));
 	
 	std::string edge = "edge" + std::to_string(loop_starts.size());	
 	operations.emplace_back(new execution::AssignOperation(edge));
-	var_types.insert_or_assign(edge, operand_types.top());
 
 	CheckLexeme(Lexeme::RightParenthesis);
 	lexer_.TakeLexeme();
@@ -409,7 +253,6 @@ void Parser::Interval() {
 		Expression();
 		if (lexer_.HasLexeme()) {
 			if (lexer_.PeekLexeme().type != Lexeme::Comma) {
-				operand_types.emplace(Int);
 				return;
 			}
 			Lexeme lex = lexer_.TakeLexeme();
@@ -503,7 +346,6 @@ int Parser::InnerBlock() {
 		if (lexer_.HasLexeme()) {
 			return ProcessInnerBlock(indent);
 		}
-		
 	}
 	throw std::runtime_error(
 		"line " + std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ": SyntaxError: unexpected EOF while parsing");
@@ -538,7 +380,7 @@ void Parser::Print() {
 		if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::RightParenthesis) {
 			lexer_.TakeLexeme();
 			operations.emplace_back(new execution::ValueOperation(""));
-				// operations.emplace_back(kUnaries.at(std::make_tuple(Lexeme::Print, Str)));
+
 				operations.emplace_back(new execution::PrintOperation());
 			return;
 		}
@@ -562,7 +404,6 @@ int Parser::GatherPrints() {
 		comma_cnt++;
 		lexer_.TakeLexeme();
 
-		// AddUnaryOperation(Lexeme::Str);
 		operations.emplace_back(new execution::StrCast());
 
 		operations.emplace_back(new execution::ValueOperation(" "));
@@ -573,14 +414,12 @@ int Parser::GatherPrints() {
 
 void Parser::PrintGathered(int comma_cnt) {
 	lexer_.TakeLexeme();
-	operand_types.pop();
 	if (comma_cnt) {
 		operations.emplace_back(new execution::StrCast());
 	}
 
 	for (int i = 0; i < comma_cnt * 2; ++i) {
-		operations.emplace_back(new execution::ExecuteOperation(Lexeme::Add));
-		// operations.emplace_back(execution::kBinaries.at(std::make_tuple(Lexeme::Add, Str, Str)));
+		operations.emplace_back(new execution::ExecuteOperation(Lexeme::Add, Lexer::pos, Lexer::line));
 	}
 
 	operations.emplace_back(new execution::PrintOperation());
@@ -593,7 +432,6 @@ void Parser::Assign() {
 			lexer_.TakeLexeme();
 			Expression();
 			operations.emplace_back(new execution::AssignOperation(lex.value));
-			var_types.insert_or_assign(lex.value, operand_types.top());
 			return;
 		} 
 		if (lexer_.PeekLexeme().type == Lexeme::EOL) {
@@ -614,12 +452,7 @@ void Parser::Expression() {
 		lexer_.TakeLexeme();
 		OrParts();
 
-		// AddBinaryOperation(Lexeme::Or);
-		operations.emplace_back(new execution::ExecuteOperation(Lexeme::Or));
-		// operations.emplace_back(execution::kNewBinaries.at(std::make_tuple(Lexeme::Or, std::get<1>(ops), std::get<0>(ops)))());
-
-		
-		operand_types.emplace(Logic);
+		operations.emplace_back(new execution::ExecuteOperation(Lexeme::Or, Lexer::pos, Lexer::line));
 	}
 }
 
@@ -632,10 +465,7 @@ void Parser::OrParts() {
 		lexer_.TakeLexeme();
 		AndParts();
 
-		// AddBinaryOperation(Lexeme::And);
-		operations.emplace_back(new execution::ExecuteOperation(Lexeme::And));
-		
-		operand_types.emplace(Logic);
+		operations.emplace_back(new execution::ExecuteOperation(Lexeme::And, Lexer::pos, Lexer::line));
 	}
 }
 
@@ -652,11 +482,7 @@ void Parser::AndParts() {
 	LogicalParts();
 
 	if (not_) {
-
-		// AddUnaryOperation(Lexeme::Not);
 		operations.emplace_back(new execution::NotOperation);
-	
-		PostOp(operand_types, Logic);
 	}
 }
 
@@ -672,10 +498,7 @@ void Parser::LogicalParts() {
 		lexer_.TakeLexeme();
 		CompParts();
 
-		// AddBinaryOperation(op_type);
-		operations.emplace_back(new execution::ExecuteOperation(op_type));
-		
-		operand_types.emplace(Logic);
+		operations.emplace_back(new execution::ExecuteOperation(op_type, Lexer::pos, Lexer::line));
 	}
 }
 
@@ -689,10 +512,8 @@ void Parser::CompParts() {
 		lexer_.TakeLexeme();
 		SumParts();
 
-		// std::tuple<ValueType, ValueType> ops = AddBinaryOperation(op_type);
-		operations.emplace_back(new execution::ExecuteOperation(op_type));
+		operations.emplace_back(new execution::ExecuteOperation(op_type, Lexer::pos, Lexer::line));
 
-		// PostOp(operand_types, std::get<1>(ops), std::get<0>(ops));
 	}
 }
 
@@ -707,11 +528,7 @@ void Parser::SumParts() {
 		lexer_.TakeLexeme();
 		MultParts();
 
-		// std::tuple<ValueType, ValueType> ops = AddBinaryOperation(op_type);
-		operations.emplace_back(new execution::ExecuteOperation(op_type));
-
-
-		// PostOp(operand_types, std::get<1>(ops), std::get<0>(ops));
+		operations.emplace_back(new execution::ExecuteOperation(op_type, Lexer::pos, Lexer::line));
 	}
 }
 
@@ -732,9 +549,8 @@ void Parser::MultParts() {
 
 	if (minus) {
 
-		ValueType op = AddUnaryOperation(Lexeme::UnaryMinus);
-	
-		PostOp(operand_types, op);
+		operations.emplace_back(new execution::UnaryMinusOperation);
+
 	}
 }
 
@@ -755,27 +571,8 @@ void Parser::Cast() {
 				CheckLexeme(Lexeme::RightParenthesis);
 
 				lexer_.TakeLexeme();
-				operand_types.pop();
 
-				operations.emplace_back(new execution::Cast(cast_type));
-				
-				// operations.emplace_back(kUnaries.at(std::make_tuple(cast_type, op)));
-				switch (cast_type) {
-					case Lexeme::Bool:
-						operand_types.emplace(Logic);
-						break;
-					case Lexeme::Str:
-						operand_types.emplace(Str);
-						break;
-					case Lexeme::Int:
-						operand_types.emplace(Int);
-						break;
-					case Lexeme::Float:
-						operand_types.emplace(Real);
-						break;
-					default:
-						break;
-				}
+				operations.emplace_back(new execution::Cast(cast_type, Lexer::pos, Lexer::line));
 			}
 		}
 		else {
@@ -798,23 +595,28 @@ void Parser::Members() {
 
 	switch (lexeme.type) {
 		case Lexeme::Identifier:
-			operand_types.emplace(var_types[lexeme.value]);
 			operations.emplace_back(new execution::VariableOperation(lexeme.value, Lexer::pos, Lexer::line));
 			return;
 		case Lexeme::IntegerConst:
-			operand_types.emplace(Int);
-			operations.emplace_back(new execution::ValueOperation(int(lexeme)));
+			try {
+                operations.emplace_back(new execution::ValueOperation(int(lexeme)));
+            } catch (std::out_of_range) {
+                throw std::runtime_error("line " + std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + 
+				": RangeError: " + lexeme.value + " is too big for int");
+            }
 			return;
 		case Lexeme::BoolConst:
-			operand_types.emplace(Logic);
 			operations.emplace_back(new execution::ValueOperation(bool(lexeme)));
 			return;
 		case Lexeme::FloatConst:
-			operand_types.emplace(Real);
-			operations.emplace_back(new execution::ValueOperation(double(lexeme)));
+			try {
+				operations.emplace_back(new execution::ValueOperation(double(lexeme)));
+			} catch (std::out_of_range) {
+                throw std::runtime_error("line " + std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + 
+				": RangeError: " + lexeme.value + " is too big for double");
+            }
 			return;
 		case Lexeme::StringConst:
-			operand_types.emplace(Str);
 			operations.emplace_back(new execution::ValueOperation(std::string(lexeme)));
 			return;
 		default:

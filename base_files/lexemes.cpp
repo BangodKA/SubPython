@@ -1,4 +1,5 @@
 #include "lexemes.hpp"
+#include "print.hpp"
 
 Lexeme::operator bool() const {
     assert (type == BoolConst);
@@ -18,8 +19,8 @@ Lexeme::operator std::string() const {
     return value;
 }
 
-std::string Lexeme::ToString() const {
+std::string Lexeme::TypeToString(Lexeme::LexemeType type) {
 	std::ostringstream oss;
-	oss << value;
+	oss << type;
 	return oss.str();
 }

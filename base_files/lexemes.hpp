@@ -66,5 +66,5 @@ struct Lexeme {
     operator int() const;
     operator std::string() const;
 
-	std::string ToString() const;
+    static std::string TypeToString(Lexeme::LexemeType type);
 };

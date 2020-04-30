@@ -11,11 +11,6 @@
 
 #include "../lexer/lexer.hpp"
 
-#define UnaryNoStr(op, opfunc)\
-{{Lexeme::op, Int}, std::shared_ptr<Operation>(new opfunc<int>)},\
-{{Lexeme::op, Real}, std::shared_ptr<Operation>(new opfunc<double>)},\
-{{Lexeme::op, Logic}, std::shared_ptr<Operation>(new opfunc<bool>)},\
-
 #define NumOperation(op, opfunc)\
 {{op, Int, Int}, std::shared_ptr<MathOperation>(new opfunc<int, int>)},\
 {{op, Int, Real}, std::shared_ptr<MathOperation>(new opfunc<int, double>)},\
@@ -49,15 +44,6 @@
 {{op, Logic, Int}, std::shared_ptr<MathOperation>(new opfunc<bool, int>)},\
 {{op, Int, Logic}, std::shared_ptr<MathOperation>(new opfunc<int, bool>)},\
 {{op, Logic, Logic}, std::shared_ptr<MathOperation>(new opfunc<bool, bool>)},
-
-struct CustomException : public std::exception {
-	CustomException(std::string str) : str_(str) {}
-	const char * what () const throw () {
-		return (str_ + "\n").c_str();
-	}
-  private:
-	std::string str_;
-};
 
 namespace execution {
 
@@ -230,7 +216,7 @@ void VariableOperation::Do(Context& context) const {
         context.stack.emplace(context.variables.at(name_).get());
     }
     catch (std::out_of_range) {
-        throw CustomException("line " + std::to_string(line_) + ":" +
+        throw std::runtime_error("line " + std::to_string(line_) + ":" +
         std::to_string(pos_) + ": NameError: name '" + name_ +"' is not defined");
     }
 
@@ -296,27 +282,27 @@ void IfOperation::Do(Context& context) const {
 	}
 }
 
-struct ThrowCustomException : Operation {
-	ThrowCustomException(std::string str) : str_(str) {} 
-  	void Do(Context& context) const final;
-  private:
-	std::string str_;
-};
-
-void ThrowCustomException::Do(Context& context) const {
-    throw CustomException(str_);
-}
-
-template<typename T>
 struct UnaryMinusOperation : Operation {
   	void Do(Context& context) const final;
 };
 
-template<typename T>
-void UnaryMinusOperation<T>::Do(Context& context) const {
-	const PolymorphicValue new_value(-static_cast<T>(context.stack.top().Get()));
-	context.stack.pop();
-	context.stack.push(new_value);
+void UnaryMinusOperation::Do(Context& context) const {
+    StackValue op = context.stack.top();
+    context.stack.pop();
+
+    switch (op.Get().GetType()) {
+        case Logic:
+        case Int: 
+            context.stack.push(StackValue(-int(op.Get())));
+            break;
+        case Real: 
+            context.stack.push(StackValue(-double(op.Get())));
+            break;
+        case Str:
+            throw std::runtime_error("line " + std::to_string(Lexer::line) + 
+				": TypeError: unsupported operand type(s) for unary -: " + ToStringSem(op.Get().GetType()));
+    }
+	
 }
 
 struct NotOperation : Operation {
@@ -361,22 +347,6 @@ void GetRangeOperation::Do(Context& context) const {
     }
 }
 
-// struct MathOperation : Operation {
-//     void Do(Context& context) const final;
-
-//     virtual StackValue DoMath(StackValue op1, StackValue op2) const = 0;
-// };
-
-// void MathOperation::Do(Context& context) const {
-//     StackValue op2 = context.stack.top();
-//     context.stack.pop();
-
-//     StackValue op1 = context.stack.top();
-//     context.stack.pop();
-
-//     context.stack.push(DoMath(op1, op2));
-// }
-
 struct MathOperation : Operation {
     void Do(Context& context) const final{}
 
@@ -385,10 +355,12 @@ struct MathOperation : Operation {
 };
 
 struct ExecuteOperation : Operation {
-    ExecuteOperation(Lexeme::LexemeType type): type_(type) {}
+    ExecuteOperation(Lexeme::LexemeType type, int pos, int line): type_(type), pos_(pos), line_(line) {}
     void Do(Context& context) const final;
   private:
     Lexeme::LexemeType type_;
+    int pos_;
+    int line_;
 };
 
 template<typename T1, typename T2>
@@ -570,7 +542,11 @@ void BoolCast::Do(Context& context) const {
 }
 
 struct IntCast : Operation {
+    IntCast(int pos, int line): pos_(pos), line_(line) {}
     void Do(Context& context) const final;
+  private:
+    int pos_;
+    int line_;
 };
 
 void IntCast::Do(Context& context) const {
@@ -578,7 +554,16 @@ void IntCast::Do(Context& context) const {
     context.stack.pop();
 	switch (op.Get().GetType()) {
         case Str:
-            context.stack.emplace(std::stoi(std::string(op.Get())));
+            if (std::string(op.Get()) == "True" || std::string(op.Get()) == "False") {
+                std::string(op.Get()) == "False" ? context.stack.emplace(0) : context.stack.emplace(1);
+                break;
+            }
+            try {
+                context.stack.emplace(std::stoi(std::string(op.Get())));
+            } catch (std::out_of_range) {
+                throw std::runtime_error("line " + std::to_string(line_) + ":" + std::to_string(pos_) + 
+				": RangeError: " + std::string(op.Get()) + " is too big for int()");
+            }
             break;
         case Logic:
         case Int:
@@ -593,7 +578,11 @@ void IntCast::Do(Context& context) const {
 }
 
 struct FloatCast : Operation {
+    FloatCast(int pos, int line): pos_(pos), line_(line) {}
     void Do(Context& context) const final;
+  private:
+    int pos_;
+    int line_;
 };
 
 void FloatCast::Do(Context& context) const {
@@ -608,7 +597,12 @@ void FloatCast::Do(Context& context) const {
                 std::string(op.Get()) == "False" ? context.stack.emplace(0.0) : context.stack.emplace(1.0);
                 break;
             }
-            context.stack.emplace(std::stod(std::string(op.Get())));
+            try {
+                context.stack.emplace(std::stod(std::string(op.Get())));
+            } catch (std::out_of_range) {
+                throw std::runtime_error("line " + std::to_string(line_) + ":" + std::to_string(pos_) + 
+				": RangeError: " + std::string(op.Get()) + " is too big for float()");
+            }
             break;
         case Int:
             context.stack.emplace(double(int(op.Get())));
@@ -648,10 +642,12 @@ void StrCast::Do(Context& context) const {
 }
 
 struct Cast : Operation {
-    Cast(Lexeme::LexemeType cast_type): cast_type_(cast_type) {}
+    Cast(Lexeme::LexemeType cast_type, int pos, int line): cast_type_(cast_type), pos_(pos), line_(line) {}
     void Do(Context& context) const final;
  private:
     Lexeme::LexemeType cast_type_;
+    int pos_;
+    int line_;
 };
 
 void Cast::Do(Context& context) const {
@@ -660,13 +656,13 @@ void Cast::Do(Context& context) const {
             StrCast().Do(context);
             break;
         case Lexeme::Float:
-            FloatCast().Do(context);
+            FloatCast(pos_, line_).Do(context);
             break;
         case Lexeme::Bool:
             BoolCast().Do(context);
             break;
         case Lexeme::Int:
-            IntCast().Do(context);
+            IntCast(pos_, line_).Do(context);
             break;
         default:
             break;
@@ -702,12 +698,6 @@ void PrintOperation::Do(Context& context) const {
 using Operations = std::vector<std::shared_ptr<Operation>>;
 
 using OperationType = Lexeme::LexemeType;
-
-using UnaryKey = std::tuple<OperationType, ValueType>;
-
-static const std::map<UnaryKey, std::shared_ptr<Operation>> kUnaries {
-	UnaryNoStr(UnaryMinus, UnaryMinusOperation)
-};
 
 using BinaryKey = std::tuple<OperationType, ValueType, ValueType>;
 
@@ -781,8 +771,13 @@ void ExecuteOperation::Do(Context& context) const {
 
     StackValue op1 = context.stack.top();
     context.stack.pop();
-
-    context.stack.emplace(execution::kMathBinaries.at(std::make_tuple(type_, op1.Get().GetType(), op2.Get().GetType()))->DoMath(op1, op2));
+    try {
+        context.stack.emplace(execution::kMathBinaries.at(std::make_tuple(type_, op1.Get().GetType(), op2.Get().GetType()))->DoMath(op1, op2));
+    } catch (std::out_of_range) {
+        throw std::runtime_error("line " + std::to_string(line_) + ":" + std::to_string(pos_) + 
+				": TypeError: unsupported operand type(s) for " + Lexeme::TypeToString(type_) + ": " +  
+                ToStringSem(op1.Get().GetType()) + " and " + ToStringSem(op2.Get().GetType()));
+    }
 }
 
 }
