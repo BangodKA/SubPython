@@ -183,7 +183,7 @@ void Parser::Run() {
 std::tuple<ValueType, ValueType> Parser::AddBinaryOperation(Lexeme::LexemeType type) {
 	std::tuple<ValueType, ValueType> ops = PrepOperation();
 	try {
-		operations.emplace_back(execution::kBinaries.at(std::make_tuple(type, std::get<1>(ops), std::get<0>(ops)))());
+		operations.emplace_back(execution::kBinaries.at(std::make_tuple(type, std::get<1>(ops), std::get<0>(ops))));
 	}
 	catch (std::out_of_range& e) {
 		ProcessBinaryTypeExceptions(std::get<1>(ops), std::get<0>(ops), type);
@@ -572,14 +572,13 @@ int Parser::GatherPrints() {
 
 void Parser::PrintGathered(int comma_cnt) {
 	lexer_.TakeLexeme();
-	ValueType op = operand_types.top();
 	operand_types.pop();
 	if (comma_cnt) {
 		operations.emplace_back(new execution::StrCast());
 	}
 
 	for (int i = 0; i < comma_cnt * 2; ++i) {
-		operations.emplace_back(execution::kBinaries.at(std::make_tuple(Lexeme::Add, Str, Str))());
+		operations.emplace_back(execution::kBinaries.at(std::make_tuple(Lexeme::Add, Str, Str)));
 	}
 
 	operations.emplace_back(new execution::PrintOperation());
@@ -613,7 +612,10 @@ void Parser::Expression() {
 		lexer_.TakeLexeme();
 		OrParts();
 
-		AddBinaryOperation(Lexeme::Or);
+		// AddBinaryOperation(Lexeme::Or);
+		operations.emplace_back(new execution::ExecuteOperation(Lexeme::Or));
+		// operations.emplace_back(execution::kNewBinaries.at(std::make_tuple(Lexeme::Or, std::get<1>(ops), std::get<0>(ops)))());
+
 		
 		operand_types.emplace(Logic);
 	}
@@ -628,7 +630,8 @@ void Parser::OrParts() {
 		lexer_.TakeLexeme();
 		AndParts();
 
-		AddBinaryOperation(Lexeme::And);
+		// AddBinaryOperation(Lexeme::And);
+		operations.emplace_back(new execution::ExecuteOperation(Lexeme::And));
 		
 		operand_types.emplace(Logic);
 	}
@@ -745,7 +748,6 @@ void Parser::Cast() {
 				CheckLexeme(Lexeme::RightParenthesis);
 
 				lexer_.TakeLexeme();
-				ValueType op = operand_types.top();
 				operand_types.pop();
 
 				operations.emplace_back(new execution::Cast(cast_type));

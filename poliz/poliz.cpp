@@ -17,38 +17,38 @@
 {{Lexeme::op, Logic}, std::shared_ptr<Operation>(new opfunc<bool>)},\
 
 #define NumOperation(op, opfunc)\
-{{op, Int, Int}, &MakeOp<opfunc<int, int>>},\
-{{op, Int, Real}, &MakeOp<opfunc<int, double>>},\
-{{op, Real, Int}, &MakeOp<opfunc<double, int>>},\
-{{op, Real, Real}, &MakeOp<opfunc<double, double>>},\
-{{op, Logic, Real}, &MakeOp<opfunc<bool, double>>},\
-{{op, Real, Logic}, &MakeOp<opfunc<double, bool>>},\
-{{op, Logic, Int}, &MakeOp<opfunc<bool, int>>},\
-{{op, Int, Logic}, &MakeOp<opfunc<int, bool>>},\
-{{op, Logic, Logic}, &MakeOp<opfunc<bool, bool>>},
+{{op, Int, Int}, std::shared_ptr<Operation>(new opfunc<int, int>)},\
+{{op, Int, Real}, std::shared_ptr<Operation>(new opfunc<int, double>)},\
+{{op, Real, Int}, std::shared_ptr<Operation>(new opfunc<double, int>)},\
+{{op, Real, Real}, std::shared_ptr<Operation>(new opfunc<double, double>)},\
+{{op, Logic, Real}, std::shared_ptr<Operation>(new opfunc<bool, double>)},\
+{{op, Real, Logic}, std::shared_ptr<Operation>(new opfunc<double, bool>)},\
+{{op, Logic, Int}, std::shared_ptr<Operation>(new opfunc<bool, int>)},\
+{{op, Int, Logic}, std::shared_ptr<Operation>(new opfunc<int, bool>)},\
+{{op, Logic, Logic}, std::shared_ptr<Operation>(new opfunc<bool, bool>)},
 
 #define CompOperation(op, opfunc)\
-{{op, Int, Int}, &MakeOp<opfunc<int, int>>},\
-{{op, Int, Real}, &MakeOp<opfunc<int, double>>},\
-{{op, Real, Int}, &MakeOp<opfunc<double, int>>},\
-{{op, Real, Real}, &MakeOp<opfunc<double, double>>},\
-{{op, Logic, Real}, &MakeOp<opfunc<bool, double>>},\
-{{op, Real, Logic}, &MakeOp<opfunc<double, bool>>},\
-{{op, Logic, Int}, &MakeOp<opfunc<bool, int>>},\
-{{op, Int, Logic}, &MakeOp<opfunc<int, bool>>},\
-{{op, Logic, Logic}, &MakeOp<opfunc<bool, bool>>},\
-{{op, Str, Str}, &MakeOp<opfunc<std::string, std::string>>},
+{{op, Int, Int}, std::shared_ptr<Operation>(new opfunc<int, int>)},\
+{{op, Int, Real}, std::shared_ptr<Operation>(new opfunc<int, double>)},\
+{{op, Real, Int}, std::shared_ptr<Operation>(new opfunc<double, int>)},\
+{{op, Real, Real}, std::shared_ptr<Operation>(new opfunc<double, double>)},\
+{{op, Logic, Real}, std::shared_ptr<Operation>(new opfunc<bool, double>)},\
+{{op, Real, Logic}, std::shared_ptr<Operation>(new opfunc<double, bool>)},\
+{{op, Logic, Int}, std::shared_ptr<Operation>(new opfunc<bool, int>)},\
+{{op, Int, Logic}, std::shared_ptr<Operation>(new opfunc<int, bool>)},\
+{{op, Logic, Logic}, std::shared_ptr<Operation>(new opfunc<bool, bool>)},\
+{{op, Str, Str}, std::shared_ptr<Operation>(new opfunc<std::string, std::string>)},
 
 #define LogicOperation(op, opfunc)\
-{{op, Int, Int}, &MakeOp<opfunc<int, int>>},\
-{{op, Int, Real}, &MakeOp<opfunc<int, double>>},\
-{{op, Real, Int}, &MakeOp<opfunc<double, int>>},\
-{{op, Real, Real}, &MakeOp<opfunc<double, double>>},\
-{{op, Logic, Real}, &MakeOp<opfunc<bool, double>>},\
-{{op, Real, Logic}, &MakeOp<opfunc<double, bool>>},\
-{{op, Logic, Int}, &MakeOp<opfunc<bool, int>>},\
-{{op, Int, Logic}, &MakeOp<opfunc<int, bool>>},\
-{{op, Logic, Logic}, &MakeOp<opfunc<bool, bool>>},
+{{op, Int, Int}, std::shared_ptr<Operation>(new opfunc<int, int>)},\
+{{op, Int, Real}, std::shared_ptr<Operation>(new opfunc<int, double>)},\
+{{op, Real, Int}, std::shared_ptr<Operation>(new opfunc<double, int>)},\
+{{op, Real, Real}, std::shared_ptr<Operation>(new opfunc<double, double>)},\
+{{op, Logic, Real}, std::shared_ptr<Operation>(new opfunc<bool, double>)},\
+{{op, Real, Logic}, std::shared_ptr<Operation>(new opfunc<double, bool>)},\
+{{op, Logic, Int}, std::shared_ptr<Operation>(new opfunc<bool, int>)},\
+{{op, Int, Logic}, std::shared_ptr<Operation>(new opfunc<int, bool>)},\
+{{op, Logic, Logic}, std::shared_ptr<Operation>(new opfunc<bool, bool>)},
 
 struct CustomException : public std::exception {
 	CustomException(std::string str) : str_(str) {}
@@ -81,7 +81,7 @@ class PolymorphicValue {
     operator std::string() const { CheckIs(Str); return str_; }
     operator int() const { CheckIs(Int); return integral_; }
     operator double() const { CheckIs(Real); return real_; }
-    operator bool() const { CheckIs(Logic); return logic_; }
+    operator bool() const;
     
     ValueType GetType();
 
@@ -99,21 +99,18 @@ ValueType PolymorphicValue::GetType() {
     return type_;
 }
 
-// PolymorphicValue::operator bool() const {
-// 	if (type_ == Logic) {
-// 		return logic_;
-// 	}
-// 	else if (type_ == Int) {
-// 		return integral_;
-// 	}
-// 	else if (type_ == Str) {
-// 		if (str_ == "") {
-// 			return false;
-// 		}
-// 		return true;
-// 	}
-// 	return real_;	
-// }
+PolymorphicValue::operator bool() const {
+	if (type_ == Logic) {
+		return logic_;
+	}
+	else if (type_ == Int) {
+		return integral_ == 0 ? false : true;
+	}
+	else if (type_ == Str) {
+        return str_ == "" ? false : true;
+	}
+	return real_ == 0 ? false : true;
+}
 
 void PolymorphicValue::CheckIs(ValueType type) const {
 	if (type != type_) {
@@ -307,14 +304,12 @@ void UnaryMinusOperation<T>::Do(Context& context) const {
 	context.stack.push(new_value);
 }
 
-template<typename T>
 struct NotOperation : Operation {
   	void Do(Context& context) const final;
 };
 
-template<typename T>
-void NotOperation<T>::Do(Context& context) const {
-	const PolymorphicValue new_value(!(static_cast<T>(context.stack.top().Get())));
+void NotOperation::Do(Context& context) const {
+	const PolymorphicValue new_value(!(bool(context.stack.top().Get())));
 	context.stack.pop();
 	context.stack.push(new_value);
 }
@@ -519,24 +514,34 @@ StackValue NotEqualOperation<T1, T2>::DoMath(StackValue op1, StackValue op2) con
     return StackValue(static_cast<T1>(op1.Get()) != static_cast<T2>(op2.Get()));
 }
 
-template<typename T1, typename T2>
-struct AndOperation : MathOperation {
-    StackValue DoMath(StackValue op1, StackValue op2) const final;
+struct NewOperation : Operation {
+    void Do(Context& context) const final{}
+
+    virtual StackValue DoNew(StackValue op1, StackValue op2) const = 0;
+    StackValue NDo(Context& context, Lexeme::LexemeType type) const;
 };
 
-template<typename T1, typename T2>
-StackValue AndOperation<T1, T2>::DoMath(StackValue op1, StackValue op2) const {
-    return StackValue(static_cast<T1>(op1.Get()) && static_cast<T2>(op2.Get()));
+struct ExecuteOperation : Operation {
+    ExecuteOperation(Lexeme::LexemeType type): type_(type) {}
+    void Do(Context& context) const final;
+  private:
+    Lexeme::LexemeType type_;
+};
+
+struct AndOperation : NewOperation {
+    StackValue DoNew(StackValue op1, StackValue op2) const final;
+};
+
+StackValue AndOperation::DoNew(StackValue op1, StackValue op2) const {
+    return StackValue(bool((op1.Get())) && bool((op2.Get())));
 }
 
-template<typename T1, typename T2>
-struct OrOperation : MathOperation {
-    StackValue DoMath(StackValue op1, StackValue op2) const final;
+struct OrOperation : NewOperation {
+    StackValue DoNew(StackValue op1, StackValue op2) const final;
 };
 
-template<typename T1, typename T2>
-StackValue OrOperation<T1, T2>::DoMath(StackValue op1, StackValue op2) const {
-    return StackValue(static_cast<T1>(op1.Get()) || static_cast<T2>(op2.Get()));
+StackValue OrOperation::DoNew(StackValue op1, StackValue op2) const  {
+    return StackValue(bool((op1.Get())) || bool((op2.Get())));
 }
 
 struct BoolCast : Operation {
@@ -694,64 +699,50 @@ void PrintOperation::Do(Context& context) const {
         default:
             break;
     }
-	
 }
 
 using Operations = std::vector<std::shared_ptr<Operation>>;
 
 using OperationType = Lexeme::LexemeType;
 
-template<typename T>
-Operation* MakeOp() {
-  	return new T();
-}
-
-using OperationBuilder = Operation* (*)();
-
 using UnaryKey = std::tuple<OperationType, ValueType>;
 
 static const std::map<UnaryKey, std::shared_ptr<Operation>> kUnaries {
 	UnaryNoStr(UnaryMinus, UnaryMinusOperation)
-	// UnaryNoStr(Bool, BoolCast)
-	// UnaryNoStr(Int, IntCast)
-	// UnaryNoStr(Float, FloatCast)
-	// UnaryNoStr(Str, StrCast)
 
-	UnaryNoStr(Not, NotOperation)
+    {{Lexeme::Not, Int}, std::shared_ptr<Operation>(new NotOperation)},
+    {{Lexeme::Not, Real}, std::shared_ptr<Operation>(new NotOperation)},
+    {{Lexeme::Not, Logic}, std::shared_ptr<Operation>(new NotOperation)},
 
-	{{Lexeme::Not, Str}, std::shared_ptr<Operation>(new NotStrOperation<std::string>)},
-	// {{Lexeme::Bool, Str}, std::shared_ptr<Operation>(new BoolStrCast<std::string>)},
-	// {{Lexeme::Int, Str}, std::shared_ptr<Operation>(new IntStrCast<std::string>)},
-	// {{Lexeme::Float, Str}, std::shared_ptr<Operation>(new FloatStrCast<std::string>)},
-	// {{Lexeme::Str, Str}, std::shared_ptr<Operation>(new StrStrCast<std::string>)},
+	{{Lexeme::Not, Str}, std::shared_ptr<Operation>(new NotOperation)},
   
 };
 
 using BinaryKey = std::tuple<OperationType, ValueType, ValueType>;
 
-static const std::map<BinaryKey, OperationBuilder> kBinaries {
-	{{Lexeme::Add, Str, Str}, &MakeOp<PlusOperation<std::string, std::string>>},
-	{{Lexeme::Mul, Str, Int}, &MakeOp<MulStrROperation<std::string, int>>},
-	{{Lexeme::Mul, Int, Str}, &MakeOp<MulStrLOperation<int, std::string>>},
+static const std::map<BinaryKey, std::shared_ptr<Operation>> kBinaries {
+	{{Lexeme::Add, Str, Str}, std::shared_ptr<Operation>(new PlusOperation<std::string, std::string>)},
+	{{Lexeme::Mul, Str, Int}, std::shared_ptr<Operation>(new MulStrROperation<std::string, int>)},
+	{{Lexeme::Mul, Int, Str}, std::shared_ptr<Operation>(new MulStrLOperation<int, std::string>)},
 
-    {{Lexeme::Equal, Str, Int}, &MakeOp<EqualStrOperation<std::string, int>>},
-	{{Lexeme::Equal, Int, Str}, &MakeOp<EqualStrOperation<int, std::string>>},
-    {{Lexeme::Equal, Str, Real}, &MakeOp<EqualStrOperation<std::string, double>>},
-	{{Lexeme::Equal, Real, Str}, &MakeOp<EqualStrOperation<double, std::string>>},
-    {{Lexeme::Equal, Str, Logic}, &MakeOp<EqualStrOperation<std::string, bool>>},
-	{{Lexeme::Equal, Logic, Str}, &MakeOp<EqualStrOperation<bool, std::string>>},
+    {{Lexeme::Equal, Str, Int}, std::shared_ptr<Operation>(new EqualStrOperation<std::string, int>)},
+	{{Lexeme::Equal, Int, Str}, std::shared_ptr<Operation>(new EqualStrOperation<int, std::string>)},
+    {{Lexeme::Equal, Str, Real}, std::shared_ptr<Operation>(new EqualStrOperation<std::string, double>)},
+	{{Lexeme::Equal, Real, Str}, std::shared_ptr<Operation>(new EqualStrOperation<double, std::string>)},
+    {{Lexeme::Equal, Str, Logic}, std::shared_ptr<Operation>(new EqualStrOperation<std::string, bool>)},
+	{{Lexeme::Equal, Logic, Str}, std::shared_ptr<Operation>(new EqualStrOperation<bool, std::string>)},
 
 	NumOperation(Lexeme::Add, PlusOperation)
 	NumOperation(Lexeme::Sub, MinusOperation)
 	NumOperation(Lexeme::Mul, MulOperation)
 	NumOperation(Lexeme::Div, DivOperation)
 
-	{{Lexeme::Mod, Int, Int}, &MakeOp<ModOperation<int, int>>},
-	{{Lexeme::Mod, Logic, Int}, &MakeOp<ModOperation<bool, int>>},
-	{{Lexeme::Mod, Int, Logic}, &MakeOp<ModOperation<int, bool>>},
-	{{Lexeme::Mod, Logic, Logic}, &MakeOp<ModOperation<bool, bool>>},
+	{{Lexeme::Mod, Int, Int}, std::shared_ptr<Operation>(new ModOperation<int, int>)},
+	{{Lexeme::Mod, Logic, Int}, std::shared_ptr<Operation>(new ModOperation<bool, int>)},
+	{{Lexeme::Mod, Int, Logic}, std::shared_ptr<Operation>(new ModOperation<int, bool>)},
+	{{Lexeme::Mod, Logic, Logic}, std::shared_ptr<Operation>(new ModOperation<bool, bool>)},
 
-    {{Lexeme::Range, Int, Int}, &MakeOp<GetRangeOperation<int, int>>},
+    {{Lexeme::Range, Int, Int}, std::shared_ptr<Operation>(new GetRangeOperation<int, int>)},
 
 	CompOperation(Lexeme::Less, LessOperation)
 	CompOperation(Lexeme::Greater, GreaterOperation)
@@ -760,9 +751,54 @@ static const std::map<BinaryKey, OperationBuilder> kBinaries {
 	CompOperation(Lexeme::Equal, EqualOperation)
   	CompOperation(Lexeme::NotEqual, NotEqualOperation)
 
-	LogicOperation(Lexeme::And, AndOperation)
-	LogicOperation(Lexeme::Or, OrOperation)
+	// LogicOperation(Lexeme::And, AndOperation)
 
 };
+
+static const std::map<BinaryKey, std::shared_ptr<NewOperation>> kNewBinaries {
+    {{Lexeme::Or, Int, Int}, std::shared_ptr<NewOperation>(new OrOperation)},
+    {{Lexeme::Or, Int, Real}, std::shared_ptr<NewOperation>(new OrOperation)},
+    {{Lexeme::Or, Real, Int}, std::shared_ptr<NewOperation>(new OrOperation)},
+    {{Lexeme::Or, Real, Real}, std::shared_ptr<NewOperation>(new OrOperation)},
+    {{Lexeme::Or, Logic, Real}, std::shared_ptr<NewOperation>(new OrOperation)},
+    {{Lexeme::Or, Real, Logic}, std::shared_ptr<NewOperation>(new OrOperation)},
+    {{Lexeme::Or, Logic, Int}, std::shared_ptr<NewOperation>(new OrOperation)},
+    {{Lexeme::Or, Int, Logic}, std::shared_ptr<NewOperation>(new OrOperation)},
+    {{Lexeme::Or, Logic, Logic}, std::shared_ptr<NewOperation>(new OrOperation)},
+    {{Lexeme::Or, Str, Str}, std::shared_ptr<NewOperation>(new OrOperation)},
+    {{Lexeme::Or, Logic, Str}, std::shared_ptr<NewOperation>(new OrOperation)},
+    {{Lexeme::Or, Int, Str}, std::shared_ptr<NewOperation>(new OrOperation)},
+    {{Lexeme::Or, Real, Str}, std::shared_ptr<NewOperation>(new OrOperation)},
+    {{Lexeme::Or, Str, Logic}, std::shared_ptr<NewOperation>(new OrOperation)},
+    {{Lexeme::Or, Str, Real}, std::shared_ptr<NewOperation>(new OrOperation)},
+    {{Lexeme::Or, Str, Int}, std::shared_ptr<NewOperation>(new OrOperation)},
+
+    {{Lexeme::And, Int, Int}, std::shared_ptr<NewOperation>(new AndOperation)},
+    {{Lexeme::And, Int, Real}, std::shared_ptr<NewOperation>(new AndOperation)},
+    {{Lexeme::And, Real, Int}, std::shared_ptr<NewOperation>(new AndOperation)},
+    {{Lexeme::And, Real, Real}, std::shared_ptr<NewOperation>(new AndOperation)},
+    {{Lexeme::And, Logic, Real}, std::shared_ptr<NewOperation>(new AndOperation)},
+    {{Lexeme::And, Real, Logic}, std::shared_ptr<NewOperation>(new AndOperation)},
+    {{Lexeme::And, Logic, Int}, std::shared_ptr<NewOperation>(new AndOperation)},
+    {{Lexeme::And, Int, Logic}, std::shared_ptr<NewOperation>(new AndOperation)},
+    {{Lexeme::And, Logic, Logic}, std::shared_ptr<NewOperation>(new AndOperation)},
+    {{Lexeme::And, Str, Str}, std::shared_ptr<NewOperation>(new AndOperation)},
+    {{Lexeme::And, Logic, Str}, std::shared_ptr<NewOperation>(new AndOperation)},
+    {{Lexeme::And, Int, Str}, std::shared_ptr<NewOperation>(new AndOperation)},
+    {{Lexeme::And, Real, Str}, std::shared_ptr<NewOperation>(new AndOperation)},
+    {{Lexeme::And, Str, Logic}, std::shared_ptr<NewOperation>(new AndOperation)},
+    {{Lexeme::And, Str, Real}, std::shared_ptr<NewOperation>(new AndOperation)},
+    {{Lexeme::And, Str, Int}, std::shared_ptr<NewOperation>(new AndOperation)},
+};
+
+void ExecuteOperation::Do(Context& context) const {
+    StackValue op2 = context.stack.top();
+    context.stack.pop();
+
+    StackValue op1 = context.stack.top();
+    context.stack.pop();
+
+    context.stack.emplace(execution::kNewBinaries.at(std::make_tuple(type_, op1.Get().GetType(), op2.Get().GetType()))->DoNew(op1, op2));
+}
 
 }
