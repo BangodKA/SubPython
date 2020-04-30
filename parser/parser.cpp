@@ -180,17 +180,17 @@ void Parser::Run() {
 	}
 }
 
-std::tuple<ValueType, ValueType> Parser::AddBinaryOperation(Lexeme::LexemeType type) {
-	std::tuple<ValueType, ValueType> ops = PrepOperation();
-	try {
-		operations.emplace_back(execution::kBinaries.at(std::make_tuple(type, std::get<1>(ops), std::get<0>(ops))));
-	}
-	catch (std::out_of_range& e) {
-		ProcessBinaryTypeExceptions(std::get<1>(ops), std::get<0>(ops), type);
-	}
+// std::tuple<ValueType, ValueType> Parser::AddBinaryOperation(Lexeme::LexemeType type) {
+// 	std::tuple<ValueType, ValueType> ops = PrepOperation();
+// 	try {
+// 		operations.emplace_back(execution::kBinaries.at(std::make_tuple(type, std::get<1>(ops), std::get<0>(ops))));
+// 	}
+// 	catch (std::out_of_range& e) {
+// 		ProcessBinaryTypeExceptions(std::get<1>(ops), std::get<0>(ops), type);
+// 	}
 
-	return ops;
-}
+// 	return ops;
+// }
 
 ValueType Parser::AddUnaryOperation(Lexeme::LexemeType type) {
 	ValueType op = operand_types.top();
@@ -346,7 +346,9 @@ int Parser::ForBlock() {
 
 	const execution::OperationIndex label_if = PrepForLoopParams(lex);
 
-	AddBinaryOperation(Lexeme::Less);
+	// AddBinaryOperation(Lexeme::Less);
+	operations.emplace_back(new execution::ExecuteOperation(Lexeme::Less));
+
 
 	const execution::OperationIndex if_index = operations.size();
 	operations.emplace_back(nullptr);
@@ -388,12 +390,11 @@ void Parser::Range() {
 	lexer_.TakeLexeme();
 	Interval();
 
-
-
-	std::tuple<ValueType, ValueType> ops = AddBinaryOperation(Lexeme::Range);
+	operations.emplace_back(new execution::GetRangeOperation(Lexer::pos, Lexer::line));
+	// std::tuple<ValueType, ValueType> ops = AddBinaryOperation(Lexeme::Range);
 	
-	operand_types.emplace(std::get<1>(ops));
-	operand_types.emplace(std::get<0>(ops));
+	// operand_types.emplace(std::get<1>(ops));
+	// operand_types.emplace(std::get<0>(ops));
 	
 	std::string edge = "edge" + std::to_string(loop_starts.size());	
 	operations.emplace_back(new execution::AssignOperation(edge));
@@ -578,7 +579,8 @@ void Parser::PrintGathered(int comma_cnt) {
 	}
 
 	for (int i = 0; i < comma_cnt * 2; ++i) {
-		operations.emplace_back(execution::kBinaries.at(std::make_tuple(Lexeme::Add, Str, Str)));
+		operations.emplace_back(new execution::ExecuteOperation(Lexeme::Add));
+		// operations.emplace_back(execution::kBinaries.at(std::make_tuple(Lexeme::Add, Str, Str)));
 	}
 
 	operations.emplace_back(new execution::PrintOperation());
@@ -651,7 +653,8 @@ void Parser::AndParts() {
 
 	if (not_) {
 
-		AddUnaryOperation(Lexeme::Not);
+		// AddUnaryOperation(Lexeme::Not);
+		operations.emplace_back(new execution::NotOperation);
 	
 		PostOp(operand_types, Logic);
 	}
@@ -669,7 +672,8 @@ void Parser::LogicalParts() {
 		lexer_.TakeLexeme();
 		CompParts();
 
-		AddBinaryOperation(op_type);
+		// AddBinaryOperation(op_type);
+		operations.emplace_back(new execution::ExecuteOperation(op_type));
 		
 		operand_types.emplace(Logic);
 	}
@@ -685,9 +689,10 @@ void Parser::CompParts() {
 		lexer_.TakeLexeme();
 		SumParts();
 
-		std::tuple<ValueType, ValueType> ops = AddBinaryOperation(op_type);
+		// std::tuple<ValueType, ValueType> ops = AddBinaryOperation(op_type);
+		operations.emplace_back(new execution::ExecuteOperation(op_type));
 
-		PostOp(operand_types, std::get<1>(ops), std::get<0>(ops));
+		// PostOp(operand_types, std::get<1>(ops), std::get<0>(ops));
 	}
 }
 
@@ -702,9 +707,11 @@ void Parser::SumParts() {
 		lexer_.TakeLexeme();
 		MultParts();
 
-		std::tuple<ValueType, ValueType> ops = AddBinaryOperation(op_type);
+		// std::tuple<ValueType, ValueType> ops = AddBinaryOperation(op_type);
+		operations.emplace_back(new execution::ExecuteOperation(op_type));
 
-		PostOp(operand_types, std::get<1>(ops), std::get<0>(ops));
+
+		// PostOp(operand_types, std::get<1>(ops), std::get<0>(ops));
 	}
 }
 
@@ -816,7 +823,7 @@ void Parser::Members() {
 
 	if (lexeme.type != Lexeme::LeftParenthesis) {
 		throw std::runtime_error(
-			std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ": SyntaxError: invalid 34syntax");
+			std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ": SyntaxError: invalid syntax");
 	}
 
 	Expression();
