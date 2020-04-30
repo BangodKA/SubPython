@@ -60,11 +60,7 @@ struct Lexeme {
     LexemeType type;
 
     std::string value;
-
-    operator bool() const;
-    operator double() const;
-    operator int() const;
-    operator std::string() const;
+    int indent_amount = 0;
 
     static std::string TypeToString(Lexeme::LexemeType type);
 };

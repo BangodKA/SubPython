@@ -10,7 +10,6 @@
 #include <queue>
 
 #include "../lexer/lexer.hpp"
-
 #include "poliz.hpp"
 
 namespace execution {
@@ -70,8 +69,6 @@ void PolymorphicValue::CheckIs(ValueType type) const {
 	}
 }
 
-using VariableName = std::string;
-
 Variable::Variable(const VariableName& name, const PolymorphicValue& value):
     name(name), value(value) {}
 
@@ -91,17 +88,42 @@ PolymorphicValue StackValue::Get() const {
     return variable_ != nullptr ? variable_->value : value_;
 }
 
-using OperationIndex = std::size_t;
-
 Operation::~Operation() {}
 
-ValueOperation::ValueOperation(PolymorphicValue value): value_(value) {}
+ValueOperation::ValueOperation(std::string value, Lexeme::LexemeType type, int pos, int line):
+             value_(value), type_(type), pos_(pos), line_(line) {}
 
 void ValueOperation::Do(Context& context) const {
-    context.stack.emplace(value_);
+    switch (type_) {
+		case Lexeme::IntegerConst:
+			try {
+                context.stack.emplace(std::stoi(value_));
+            } catch (std::out_of_range) {
+                throw std::runtime_error("line " + std::to_string(line_) + ":" + std::to_string(pos_) + 
+				": RangeError: " + value_ + " is too big for int");
+            }
+			break;
+		case Lexeme::BoolConst:
+			context.stack.emplace((value_ == "True" ? true : false));
+			break;
+		case Lexeme::FloatConst:
+			try {
+				context.stack.emplace(std::stod(value_));
+			} catch (std::out_of_range) {
+                throw std::runtime_error("line " + std::to_string(line_) + ":" + std::to_string(pos_) + 
+				": RangeError: " + value_ + " is too precise for double");
+            }
+			break;
+		case Lexeme::StringConst:
+			context.stack.emplace(value_);
+			break;
+        default:
+            break;
+	}
 }
 
-VariableOperation::VariableOperation(const VariableName& name, int pos, int line): name_(name), pos_(pos), line_(line) {}
+VariableOperation::VariableOperation(const VariableName& name, int pos, int line): 
+                                name_(name), pos_(pos), line_(line) {}
 
 void VariableOperation::Do(Context& context) const {
     try {
@@ -148,6 +170,8 @@ void IfOperation::Do(Context& context) const {
 	}
 }
 
+UnaryMinusOperation::UnaryMinusOperation(int pos, int line): pos_(pos), line_(line) {}
+
 void UnaryMinusOperation::Do(Context& context) const {
     StackValue op = context.stack.top();
     context.stack.pop();
@@ -161,7 +185,7 @@ void UnaryMinusOperation::Do(Context& context) const {
             context.stack.push(StackValue(-double(op.Get())));
             break;
         case Str:
-            throw std::runtime_error("line " + std::to_string(Lexer::line) + 
+            throw std::runtime_error("line " + std::to_string(line_) + ":" + std::to_string(pos_) + 
 				": TypeError: unsupported operand type(s) for unary -: " + ToStringSem(op.Get().GetType()));
     }
 	
@@ -200,7 +224,8 @@ void GetRangeOperation::Do(Context& context) const {
 
 void MathOperation::Do(Context& context) const {}
 
-ExecuteOperation::ExecuteOperation(Lexeme::LexemeType type, int pos, int line): type_(type), pos_(pos), line_(line) {}
+ExecuteOperation::ExecuteOperation(Lexeme::LexemeType type, int pos, int line):
+                         type_(type), pos_(pos), line_(line) {}
 
 template<typename T1, typename T2>
 StackValue PlusOperation<T1, T2>::DoMath(StackValue op1, StackValue op2) const {
@@ -345,7 +370,7 @@ void FloatCast::Do(Context& context) const {
                 context.stack.emplace(std::stod(std::string(op.Get())));
             } catch (std::out_of_range) {
                 throw std::runtime_error("line " + std::to_string(line_) + ":" + std::to_string(pos_) + 
-				": RangeError: " + std::string(op.Get()) + " is too big for float()");
+				": RangeError: " + std::string(op.Get()) + " is too precise for float()");
             }
             break;
         case Int:
@@ -422,12 +447,6 @@ void PrintOperation::Do(Context& context) const {
     }
 }
 
-using Operations = std::vector<std::shared_ptr<Operation>>;
-
-using OperationType = Lexeme::LexemeType;
-
-using BinaryKey = std::tuple<OperationType, ValueType, ValueType>;
-
 #include "poliz.tpp"
 
 void ExecuteOperation::Do(Context& context) const {
@@ -437,7 +456,9 @@ void ExecuteOperation::Do(Context& context) const {
     StackValue op1 = context.stack.top();
     context.stack.pop();
     try {
-        context.stack.emplace(execution::kMathBinaries.at(std::make_tuple(type_, op1.Get().GetType(), op2.Get().GetType()))->DoMath(op1, op2));
+        context.stack.emplace(
+            execution::kMathBinaries.at(
+                std::make_tuple(type_, op1.Get().GetType(), op2.Get().GetType()))->DoMath(op1, op2));
     } catch (std::out_of_range) {
         throw std::runtime_error("line " + std::to_string(line_) + ":" + std::to_string(pos_) + 
 				": TypeError: unsupported operand type(s) for " + Lexeme::TypeToString(type_) + ": " +  

@@ -5,15 +5,14 @@
 #include <string>
 #include <unordered_map>
 
-#include "../base_files/print.hpp"
+#include "../base_files/operators.hpp"
 
 class Lexer {
   public:
 	explicit Lexer(std::istream& input);
 
-	// todo - private, не static
-	static int line;
-	static int pos;
+	int GetLine() const;
+	int GetPos() const;
 
 	bool HasLexeme();
 	const Lexeme& PeekLexeme() const;
@@ -23,6 +22,9 @@ class Lexer {
 	using Char = std::istream::int_type;
 	using State = bool (Lexer::*)(Char c);
 
+	int line_ = 1;
+	int pos_ = 0;
+
 	std::istream& input_;
 
 	void Unget();
@@ -31,7 +33,6 @@ class Lexer {
 
 	// Indents influencers
 	bool LineStart(Char c);
-	bool LineBreak(Char c);
 	bool BlockStart(Char c);
 
 	// Comparison/Assign
@@ -54,7 +55,7 @@ class Lexer {
 	bool ScreenSymbol(Char c);
 
 	// Comments
-	// bool LineComments(Char c);
+	bool LineComments(Char c);
 
 	bool has_lexeme_;
 	Lexeme lexeme_;

@@ -3,76 +3,20 @@
 #include <string>
 #include <unordered_map>
 
-#include "../base_files/print.hpp"
+#include "../base_files/operators.hpp"
+#include "../base_files/lexemes.hpp"
+#include "lexer.hpp"
 
-class Lexer {
-  public:
-	explicit Lexer(std::istream& input);
-
-	static int line;
-	static int pos;
-
-	bool HasLexeme();
-	const Lexeme& PeekLexeme() const;
-	Lexeme TakeLexeme();
-
-
-  private:
-	using Char = std::istream::int_type;
-	using State = bool (Lexer::*)(Char c);
-
-	 std::istream& input_;
-
-	void Unget();
-
-	bool Initial(Char c);
-
-	// Indents influencers
-	bool LineStart(Char c);
-	bool LineBreak(Char c);
-	bool BlockStart(Char c);
-
-	// Comparison/Assign
-	bool CompSigns(Char c);
-
-	// Number
-	bool NoIntegerPart(Char c);
-	bool Float(Char c);
-	bool Zero(Char c);
-	bool Integer(Char c);
-	bool SignEFloat(Char c);
-	bool EFloat(Char c);
-	bool FullEFloat(Char c);
-
-	// Variable/Keywords
-	bool Variable(Char c);
-
-	// String
-	bool String(Char c);
-	bool ScreenSymbol(Char c);
-
-	// Comments
-	// bool LineComments(Char c);
-
-	bool has_lexeme_;
-	Lexeme lexeme_;
-	State state_;
-
-	static bool IsVar(Char c);
-	static bool IsRelevant(Char c);
-
-	static const std::unordered_map<Char, Lexeme::LexemeType> Comparison;
-	static const std::unordered_map<std::string, Lexeme::LexemeType> EqComparison;
-	static const std::unordered_map<Char, Lexeme::LexemeType> kSingleSeparators;
-	static const std::unordered_map<std::string, Lexeme::LexemeType> ReservedWords;
-};
-
-int Lexer::line = 1;
-int Lexer::pos = 0;
+int Lexer::GetLine() const {
+	return line_;
+}
+int Lexer::GetPos() const {
+	return pos_;
+}
 
 void Lexer::Unget() {
 	input_.unget();
-	pos--;
+	pos_--;
 }
 
 inline bool Lexer::IsVar(Char c) {
@@ -152,7 +96,7 @@ bool Lexer::HasLexeme() {
 	Char c;
 	do {
 		c = input_.get();
-		pos++;
+		pos_++;
 		if ((this->*state_)(c)) {
 			has_lexeme_ = true;
 			return true;
@@ -179,24 +123,31 @@ Lexeme Lexer::TakeLexeme() {
 
 bool Lexer::LineStart(Lexer::Char c) {
 	if (c == ' ') {
-		lexeme_.type = Lexeme::IndentSpace;
-		return true;
+		lexeme_.indent_amount++;
+		return false;
 	}
 
 	if (c == '\n') {
-		pos = 0;
-		line++;
-		lexeme_.type = Lexeme::EOL;
-		return true;
+		pos_ = 0;
+		line_++;
+		lexeme_.indent_amount = 0;
+		return false;
 	}
 
 	if (c == std::istream::traits_type::eof()) {
-    	return false;
-  	}
+		return false;
+	}
+
+	if (c == '#') {
+		state_ = &Lexer::LineComments;
+		return false;
+	}
+
+	lexeme_.type = Lexeme::IndentSpace;
 
 	state_ = &Lexer::Initial;
 	Unget();
-	return false;
+	return true;
 }
 
 bool Lexer::Initial(Lexer::Char c) {
@@ -205,9 +156,10 @@ bool Lexer::Initial(Lexer::Char c) {
   	}
 
 	if (c == '\n') {
+		lexeme_.type = Lexeme::EOL;
 		state_ = &Lexer::LineStart;
 		Unget();
-		return false;
+		return true;
 	}
 
 	auto sep = kSingleSeparators.find(c);
@@ -262,26 +214,11 @@ bool Lexer::Initial(Lexer::Char c) {
 	}
 
 	if (c == '#') {
-		// todo - fix
-		state_ = &Lexer::LineStart;
-		while (c != '\n' && c != std::istream::traits_type::eof()) c = input_.get();
-		Unget();
+		state_ = &Lexer::LineComments;
 		return false;
 	}
 
-	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) +
-				": LexicalError invalid character " + std::string(1, c));
-}
-
-bool Lexer::LineBreak(Lexer::Char c) {
-	if (c == '\n') {
-		lexeme_.type = Lexeme::EOL;
-		lexeme_.value = c;
-		state_ = &Lexer::Initial;
-		return true;
-	}
-
-	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) +
+	throw std::runtime_error(std::to_string(line_) + ":" + std::to_string(pos_) +
 				": LexicalError invalid character " + std::string(1, c));
 }
 
@@ -294,7 +231,7 @@ bool Lexer::CompSigns(Lexer::Char c) {
 		return true;
 	}
 	if (lexeme_.value[0] == '!') {
-		throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) +
+		throw std::runtime_error(std::to_string(line_) + ":" + std::to_string(pos_) +
 				 ": LexicalError invalid character " + std::string(1, c));
 	}
 	Unget();
@@ -316,7 +253,7 @@ bool Lexer::NoIntegerPart(Lexer::Char c) {
 		return false;
 	}
 
-	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) +
+	throw std::runtime_error(std::to_string(line_) + ":" + std::to_string(pos_) +
 				": LexicalError invalid character " + std::string(1, c));
 }
 
@@ -352,7 +289,7 @@ bool Lexer::Zero(Lexer::Char c) {
 		return false;
 	}
 	if (c == '0') {
-		pos++;
+		pos_++;
 		c = input_.get();
 		return false;
 	}
@@ -396,7 +333,7 @@ bool Lexer::SignEFloat(Lexer::Char c) {
 		return false;
 	}
 
-	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) +
+	throw std::runtime_error(std::to_string(line_) + ":" + std::to_string(pos_) +
 				": LexicalError invalid character " + std::string(1, c));
 }
 
@@ -407,7 +344,7 @@ bool Lexer::EFloat(Lexer::Char c) {
 		return false;
 	}
 
-	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) +
+	throw std::runtime_error(std::to_string(line_) + ":" + std::to_string(pos_) +
 				": LexicalError invalid character " + std::string(1, c));
 }
 
@@ -461,11 +398,11 @@ bool Lexer::String(Lexer::Char c) {
 	}
 
 	if (!IsRelevant(c)) {
-		throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos) +
+		throw std::runtime_error(std::to_string(line_) + ":" + std::to_string(pos_) +
 				": LexicalError invalid character " + std::string(1, c));
 	}
 
-	throw std::runtime_error(std::to_string(line) + ":" + std::to_string(pos - 1) +
+	throw std::runtime_error(std::to_string(line_) + ":" + std::to_string(pos_ - 1) +
 			": lexical : missing terminating " + std::string(1, lexeme_.value[0]) + " character");
 }
 
@@ -475,10 +412,10 @@ bool Lexer::ScreenSymbol(Lexer::Char c) {
 	return false;
 }
 
-// bool Lexer::LineComments(Lexer::Char c) {
-// 	if (c == '\n') {
-// 		Unget();
-// 		state_ = &Lexer::Initial;
-// 	}
-// 	return false;
-// }
+bool Lexer::LineComments(Lexer::Char c) {
+	if (c == '\n' || c == std::istream::traits_type::eof()) {
+		Unget();
+		state_ = &Lexer::LineStart;
+	}
+	return false;
+}

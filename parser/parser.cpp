@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "../lexer/lexer.hpp"
 #include "../poliz/poliz.hpp"
 #include "parser.hpp"
 
@@ -24,15 +25,15 @@ void Parser::Run() {
 	}
 	if (IndentCounter() != 0) {
 		throw std::runtime_error(
-				"line " + std::to_string(Lexer::line) + ":" + 
-				std::to_string(Lexer::pos - lexer_.PeekLexeme().value.length()) + ": IndentationError: unexpected indent");
+				"line " + std::to_string(lexer_.GetLine()) + ":" + 
+				std::to_string(lexer_.GetPos() - lexer_.PeekLexeme().value.length()) + ": IndentationError: unexpected indent");
 	}
 	int next_block_indent = 0;
 	while (lexer_.HasLexeme()) {
 		if (next_block_indent != 0) {
 			throw std::runtime_error(
-				"line " + std::to_string(Lexer::line) + ":" + 
-				std::to_string(Lexer::pos - lexer_.PeekLexeme().value.length()) + ": IndentationError: unexpected indent");
+				"line " + std::to_string(lexer_.GetLine()) + ":" + 
+				std::to_string(lexer_.GetPos() - lexer_.PeekLexeme().value.length()) + ": IndentationError: unexpected indent");
 		}
 		if (lexer_.PeekLexeme().type == Lexeme::EOL) {
 			lexer_.TakeLexeme();
@@ -46,12 +47,12 @@ void Parser::Run() {
 void Parser::CheckLexeme(Lexeme::LexemeType type) {
 	if (!lexer_.HasLexeme()) {
 		throw std::runtime_error(
-			"line " + std::to_string(Lexer::line) + ": SyntaxError: unexpected EOF while parsing");
+			"line " + std::to_string(lexer_.GetLine()) + ": SyntaxError: unexpected EOF while parsing");
 	}
 
 	if (lexer_.PeekLexeme().type != type) {
 		throw std::runtime_error(
-			std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ": SyntaxError: invalid syntax");
+			std::to_string(lexer_.GetLine()) + ":" + std::to_string(lexer_.GetPos()) + ": SyntaxError: invalid syntax");
 	}
 }
 
@@ -78,19 +79,11 @@ int Parser::ProcessLoop(const execution::OperationIndex label_if, const executio
 }
 
 int Parser::IndentCounter() {
-	int indent = 0;
-	while (lexer_.HasLexeme()) {
+	if (lexer_.HasLexeme()) {
 		if (lexer_.PeekLexeme().type == Lexeme::IndentSpace) {
-			lexer_.TakeLexeme();
-			indent++;
-			continue;
+			Lexeme lex = lexer_.TakeLexeme();
+			return lex.indent_amount;
 		}
-		if (lexer_.PeekLexeme().type == Lexeme::EOL) {
-			lexer_.TakeLexeme();
-			indent = 0;
-			continue;
-		}
-		return indent;
 	}
 	return 0;
 }
@@ -112,15 +105,15 @@ int Parser::BlockParts() {
 		case Lexeme::Else:
 		case Lexeme::ElIf:
 			throw std::runtime_error(
-				std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ": SyntaxError: invalid syntax");
+				std::to_string(lexer_.GetLine()) + ":" + std::to_string(lexer_.GetPos()) + ": SyntaxError: invalid syntax");
 		default:
 			break;
 	}
 
 	if (indents.top() == 0 && next_block_indent != 0) {
 		throw std::runtime_error(
-			"line " + std::to_string(Lexer::line) + ":" + 
-			std::to_string(Lexer::pos) + ": IndentationError: unexpected indent");
+			"line " + std::to_string(lexer_.GetLine()) + ":" + 
+			std::to_string(lexer_.GetPos()) + ": IndentationError: unexpected indent");
 	}
 	return next_block_indent;
 }
@@ -173,8 +166,8 @@ int Parser::ExprParts() {
 		return 0;
 	}
 	throw std::runtime_error (
-		"line " + std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) +
-		 ": SyntaxError: invalid syntax");
+		"line " + std::to_string(lexer_.GetLine()) + ":" + std::to_string(lexer_.GetPos()) +
+		 ": SyntaxError5: invalid syntax");
 }
 
 int Parser::Block() {
@@ -200,7 +193,7 @@ int Parser::ForBlock() {
 
 	const execution::OperationIndex label_if = PrepForLoopParams(lex);
 
-	operations.emplace_back(new execution::ExecuteOperation(Lexeme::Less, Lexer::pos, Lexer::line));
+	operations.emplace_back(new execution::ExecuteOperation(Lexeme::Less, lexer_.GetPos(), lexer_.GetLine()));
 
 
 	const execution::OperationIndex if_index = operations.size();
@@ -219,15 +212,15 @@ const execution::OperationIndex Parser::PrepForLoopParams(Lexeme lex) {
 	const execution::OperationIndex label_if = operations.size();
 	loop_starts.emplace(label_if);
 
-	operations.emplace_back(new execution::VariableOperation(lex.value, Lexer::pos, Lexer::line));
+	operations.emplace_back(new execution::VariableOperation(lex.value, lexer_.GetPos(), lexer_.GetLine()));
 	operations.emplace_back(new execution::AddOneOperation(lex.value));
 
 	const execution::OperationIndex label_new = operations.size();
 	operations[go_index].reset(new execution::GoOperation(label_new));
 
-	operations.emplace_back(new execution::VariableOperation(lex.value, Lexer::pos, Lexer::line));
+	operations.emplace_back(new execution::VariableOperation(lex.value, lexer_.GetPos(), lexer_.GetLine()));
 	operations.emplace_back(new execution::VariableOperation(
-		"edge" + std::to_string(loop_starts.size() - 1), Lexer::pos, Lexer::line));
+		"edge" + std::to_string(loop_starts.size() - 1), lexer_.GetPos(), lexer_.GetLine()));
 
 	return label_if;
 }
@@ -239,7 +232,7 @@ void Parser::Range() {
 	lexer_.TakeLexeme();
 	Interval();
 
-	operations.emplace_back(new execution::GetRangeOperation(Lexer::pos, Lexer::line));
+	operations.emplace_back(new execution::GetRangeOperation(lexer_.GetPos(), lexer_.GetLine()));
 	
 	std::string edge = "edge" + std::to_string(loop_starts.size());	
 	operations.emplace_back(new execution::AssignOperation(edge));
@@ -264,7 +257,7 @@ void Parser::Interval() {
 	}
 
 	throw std::runtime_error(
-		std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ":  SyntaxError: unexpected EOF while parsing");
+		std::to_string(lexer_.GetLine()) + ":" + std::to_string(lexer_.GetPos()) + ":  SyntaxError: unexpected EOF while parsing");
 }
 
 // If
@@ -348,7 +341,7 @@ int Parser::InnerBlock() {
 		}
 	}
 	throw std::runtime_error(
-		"line " + std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ": SyntaxError: unexpected EOF while parsing");
+		"line " + std::to_string(lexer_.GetLine()) + ":" + std::to_string(lexer_.GetPos()) + ": SyntaxError: unexpected EOF while parsing");
 }
 
 int Parser::ProcessInnerBlock(int indent) {
@@ -365,12 +358,12 @@ int Parser::ProcessInnerBlock(int indent) {
 			indents.pop();
 			return next_block_indent;
 		}
-		throw std::runtime_error("line " + std::to_string(Lexer::line) + ":" + 
-				std::to_string(Lexer::pos - lexer_.PeekLexeme().value.length()) + 
+		throw std::runtime_error("line " + std::to_string(lexer_.GetLine()) + ":" + 
+				std::to_string(lexer_.GetPos() - lexer_.PeekLexeme().value.length()) + 
 				": IndentationError: unexpected indent");
 	}
-	throw std::runtime_error("line " + std::to_string(Lexer::line) + ":" + 
-			std::to_string(Lexer::pos) + ": IndentationError: expected an indented block");
+	throw std::runtime_error("line " + std::to_string(lexer_.GetLine()) + ":" + 
+			std::to_string(lexer_.GetPos()) + ": IndentationError: expected an indented block");
 }
 
 void Parser::Print() {
@@ -379,7 +372,7 @@ void Parser::Print() {
 		lexer_.TakeLexeme();
 		if (lexer_.HasLexeme() && lexer_.PeekLexeme().type == Lexeme::RightParenthesis) {
 			lexer_.TakeLexeme();
-			operations.emplace_back(new execution::ValueOperation(""));
+			operations.emplace_back(new execution::ValueOperation("", Lexeme::StringConst, lexer_.GetPos(), lexer_.GetLine()));
 
 				operations.emplace_back(new execution::PrintOperation());
 			return;
@@ -395,7 +388,7 @@ void Parser::Print() {
 		}
 	}
 
-	throw std::runtime_error(std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ": SyntaxError: invalid syntax");
+	throw std::runtime_error(std::to_string(lexer_.GetLine()) + ":" + std::to_string(lexer_.GetPos()) + ": SyntaxError: invalid syntax");
 }
 
 int Parser::GatherPrints() {
@@ -406,7 +399,7 @@ int Parser::GatherPrints() {
 
 		operations.emplace_back(new execution::StrCast());
 
-		operations.emplace_back(new execution::ValueOperation(" "));
+		operations.emplace_back(new execution::ValueOperation(" ", Lexeme::StringConst, lexer_.GetPos(), lexer_.GetLine()));
 		Expression();
 	}
 	return comma_cnt;
@@ -419,7 +412,7 @@ void Parser::PrintGathered(int comma_cnt) {
 	}
 
 	for (int i = 0; i < comma_cnt * 2; ++i) {
-		operations.emplace_back(new execution::ExecuteOperation(Lexeme::Add, Lexer::pos, Lexer::line));
+		operations.emplace_back(new execution::ExecuteOperation(Lexeme::Add, lexer_.GetPos(), lexer_.GetLine()));
 	}
 
 	operations.emplace_back(new execution::PrintOperation());
@@ -438,7 +431,7 @@ void Parser::Assign() {
 			return;
 		} 
 		throw std::runtime_error(
-			std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ": " + "expected =");
+			std::to_string(lexer_.GetLine()) + ":" + std::to_string(lexer_.GetPos()) + ": " + "expected =");
 	} 
 	return;
 }
@@ -452,7 +445,7 @@ void Parser::Expression() {
 		lexer_.TakeLexeme();
 		OrParts();
 
-		operations.emplace_back(new execution::ExecuteOperation(Lexeme::Or, Lexer::pos, Lexer::line));
+		operations.emplace_back(new execution::ExecuteOperation(Lexeme::Or, lexer_.GetPos(), lexer_.GetLine()));
 	}
 }
 
@@ -465,7 +458,7 @@ void Parser::OrParts() {
 		lexer_.TakeLexeme();
 		AndParts();
 
-		operations.emplace_back(new execution::ExecuteOperation(Lexeme::And, Lexer::pos, Lexer::line));
+		operations.emplace_back(new execution::ExecuteOperation(Lexeme::And, lexer_.GetPos(), lexer_.GetLine()));
 	}
 }
 
@@ -498,7 +491,7 @@ void Parser::LogicalParts() {
 		lexer_.TakeLexeme();
 		CompParts();
 
-		operations.emplace_back(new execution::ExecuteOperation(op_type, Lexer::pos, Lexer::line));
+		operations.emplace_back(new execution::ExecuteOperation(op_type, lexer_.GetPos(), lexer_.GetLine()));
 	}
 }
 
@@ -512,7 +505,7 @@ void Parser::CompParts() {
 		lexer_.TakeLexeme();
 		SumParts();
 
-		operations.emplace_back(new execution::ExecuteOperation(op_type, Lexer::pos, Lexer::line));
+		operations.emplace_back(new execution::ExecuteOperation(op_type, lexer_.GetPos(), lexer_.GetLine()));
 
 	}
 }
@@ -528,7 +521,7 @@ void Parser::SumParts() {
 		lexer_.TakeLexeme();
 		MultParts();
 
-		operations.emplace_back(new execution::ExecuteOperation(op_type, Lexer::pos, Lexer::line));
+		operations.emplace_back(new execution::ExecuteOperation(op_type, lexer_.GetPos(), lexer_.GetLine()));
 	}
 }
 
@@ -549,7 +542,7 @@ void Parser::MultParts() {
 
 	if (minus) {
 
-		operations.emplace_back(new execution::UnaryMinusOperation);
+		operations.emplace_back(new execution::UnaryMinusOperation(lexer_.GetPos(), lexer_.GetLine()));
 
 	}
 }
@@ -572,7 +565,7 @@ void Parser::Cast() {
 
 				lexer_.TakeLexeme();
 
-				operations.emplace_back(new execution::Cast(cast_type, Lexer::pos, Lexer::line));
+				operations.emplace_back(new execution::Cast(cast_type, lexer_.GetPos(), lexer_.GetLine()));
 			}
 		}
 		else {
@@ -580,14 +573,14 @@ void Parser::Cast() {
 		}
 	}
 	else {
-		throw std::runtime_error("line " + std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) 
+		throw std::runtime_error("line " + std::to_string(lexer_.GetLine()) + ":" + std::to_string(lexer_.GetPos()) 
 		+ ": SyntaxError: unexpected EOF while parsing");
 	}
 }
 
 void Parser::Members() {
 	if (!lexer_.HasLexeme()) {
-		throw std::runtime_error("line " + std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) 
+		throw std::runtime_error("line " + std::to_string(lexer_.GetLine()) + ":" + std::to_string(lexer_.GetPos()) 
 			+ ": SyntaxError: unexpected EOF while parsing");
 	}
 
@@ -595,29 +588,13 @@ void Parser::Members() {
 
 	switch (lexeme.type) {
 		case Lexeme::Identifier:
-			operations.emplace_back(new execution::VariableOperation(lexeme.value, Lexer::pos, Lexer::line));
+			operations.emplace_back(new execution::VariableOperation(lexeme.value, lexer_.GetPos(), lexer_.GetLine()));
 			return;
 		case Lexeme::IntegerConst:
-			try {
-                operations.emplace_back(new execution::ValueOperation(int(lexeme)));
-            } catch (std::out_of_range) {
-                throw std::runtime_error("line " + std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + 
-				": RangeError: " + lexeme.value + " is too big for int");
-            }
-			return;
 		case Lexeme::BoolConst:
-			operations.emplace_back(new execution::ValueOperation(bool(lexeme)));
-			return;
 		case Lexeme::FloatConst:
-			try {
-				operations.emplace_back(new execution::ValueOperation(double(lexeme)));
-			} catch (std::out_of_range) {
-                throw std::runtime_error("line " + std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + 
-				": RangeError: " + lexeme.value + " is too big for double");
-            }
-			return;
 		case Lexeme::StringConst:
-			operations.emplace_back(new execution::ValueOperation(std::string(lexeme)));
+			operations.emplace_back(new ValueOperation(lexeme.value, lexeme.type, lexer_.GetPos(), lexer_.GetLine()));
 			return;
 		default:
 			break;
@@ -625,7 +602,7 @@ void Parser::Members() {
 
 	if (lexeme.type != Lexeme::LeftParenthesis) {
 		throw std::runtime_error(
-			std::to_string(Lexer::line) + ":" + std::to_string(Lexer::pos) + ": SyntaxError: invalid syntax");
+			std::to_string(lexer_.GetLine()) + ":" + std::to_string(lexer_.GetPos()) + ": SyntaxError: invalid syntax");
 	}
 
 	Expression();

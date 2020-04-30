@@ -81,12 +81,15 @@ struct Operation {
 };
 
 struct ValueOperation : Operation {
-    ValueOperation(PolymorphicValue value);
+    ValueOperation(std::string value, Lexeme::LexemeType type, int pos, int line);
 
     void Do(Context& context) const final;
 
   private:
-    const PolymorphicValue value_;
+    std::string value_;
+    Lexeme::LexemeType type_;
+    int pos_;
+    int line_;
 };
 
 struct VariableOperation : Operation {
@@ -134,7 +137,11 @@ struct IfOperation : GoOperation {
 };
 
 struct UnaryMinusOperation : Operation {
-  void Do(Context& context) const final;
+    UnaryMinusOperation(int pos, int line);
+    void Do(Context& context) const final;
+  private:
+    int pos_;
+    int line_;
 };
 
 struct NotOperation : Operation {
