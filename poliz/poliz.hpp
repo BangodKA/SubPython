@@ -208,11 +208,6 @@ struct NotOperation : Operation {
   	void Do(Context& context) const final;
 };
 
-template<typename T>
-struct NotStrOperation : Operation {
-    void Do(Context& context) const final;
-};
-
 template<typename T1, typename T2>
 struct GetRangeOperation : Operation {
     void Do(Context& context) const final;

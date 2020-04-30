@@ -314,23 +314,6 @@ void NotOperation::Do(Context& context) const {
 	context.stack.push(new_value);
 }
 
-template<typename T>
-struct NotStrOperation : Operation {
-    void Do(Context& context) const final;
-};
-
-template<typename T>
-void NotStrOperation<T>::Do(Context& context) const {
-    StackValue op = context.stack.top();
-    context.stack.pop();
-    if (static_cast<T>(op.Get()) != "") {
-      	context.stack.emplace(false);
-    }
-    else {
-      	context.stack.emplace(true);
-    }
-}
-
 template<typename T1, typename T2>
 struct GetRangeOperation : Operation {
     void Do(Context& context) const final;
