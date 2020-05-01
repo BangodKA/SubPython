@@ -5,62 +5,62 @@
 #include <string>
 
 struct Lexeme {
-    enum LexemeType {
-        // Constants
-        // String consists of ASCII only;
-        StringConst,
-        BoolConst,
-        IntegerConst,
-        FloatConst,
+	enum LexemeType {
+		// Constants
+		// String consists of ASCII only;
+		StringConst,
+		BoolConst,
+		IntegerConst,
+		FloatConst,
 
-        // Keywords
-        Bool,
-        Int,
-        Str,
-        Float,
-        While,
-        For,
-        Break,
-        Continue,
-        If,
-        Else,
-        ElIf,
-        In,
-        Range,
-        And,
-        Or,
-        Not,
-        Print,
+		// Keywords
+		Bool,
+		Int,
+		Str,
+		Float,
+		While,
+		For,
+		Break,
+		Continue,
+		If,
+		Else,
+		ElIf,
+		In,
+		Range,
+		And,
+		Or,
+		Not,
+		Print,
 
-        // Punctuators/Operators
-        EOL,
-        IndentSpace,
-        Comma,
-        Colon,
-        LeftParenthesis,
-        RightParenthesis,
-        Assign,
-        Equal,
-        NotEqual,
-        Less,
-        LessEq,
-        Greater,
-        GreaterEq,
-        Add,
-        Sub,
-        Mul,
-        Div,
-        Mod,
+		// Punctuators/Operators
+		EOL,
+		IndentSpace,
+		Comma,
+		Colon,
+		LeftParenthesis,
+		RightParenthesis,
+		Assign,
+		Equal,
+		NotEqual,
+		Less,
+		LessEq,
+		Greater,
+		GreaterEq,
+		Add,
+		Sub,
+		Mul,
+		Div,
+		Mod,
 
-        UnaryMinus, // Special operation, not lexeme
+		UnaryMinus, // Special operation, not lexeme
 
-        Identifier,
-    };
+		Identifier,
+	};
 	Lexeme() = default;
-    LexemeType type;
+	LexemeType type;
 
-    std::string value;
-    int indent_amount = 0;
+	std::string value;
+	int indent_amount = 0;
 
-    static std::string TypeToString(Lexeme::LexemeType type);
+	static std::string TypeToString(Lexeme::LexemeType type);
 };

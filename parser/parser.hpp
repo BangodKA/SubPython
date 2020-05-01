@@ -10,7 +10,7 @@
 #include <stack>
 #include <map>
 
-// #include "../lexer/lexer.hpp" // todo -
+#include "../lexer/lexer.hpp" 
 #include "../poliz/poliz.hpp"
 
 using namespace execution;

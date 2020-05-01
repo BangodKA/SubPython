@@ -37,8 +37,8 @@ const std::unordered_map<Lexer::Char, Lexeme::LexemeType> Lexer::Comparison {
 
 const std::unordered_map<std::string, Lexeme::LexemeType> Lexer::EqComparison {
 	{"<=", Lexeme::LessEq},
-    {">=", Lexeme::GreaterEq},
-    {"==", Lexeme::Equal},
+	{">=", Lexeme::GreaterEq},
+	{"==", Lexeme::Equal},
 	{"!=", Lexeme::NotEqual},
 };
 
@@ -57,7 +57,7 @@ const std::unordered_map<std::string, Lexeme::LexemeType> Lexer::ReservedWords {
 	{"bool", Lexeme::Bool},
 	{"True", Lexeme::BoolConst},
 	{"False", Lexeme::BoolConst},
-    {"int", Lexeme::Int},
+	{"int", Lexeme::Int},
 	{"str", Lexeme::Str},
 	{"float", Lexeme::Float},
 	{"while", Lexeme::While},
@@ -152,8 +152,8 @@ bool Lexer::LineStart(Lexer::Char c) {
 
 bool Lexer::Initial(Lexer::Char c) {
 	if (c == ' ' || c == std::istream::traits_type::eof()) {
-    	return false;
-  	}
+		return false;
+	}
 
 	if (c == '\n') {
 		lexeme_.type = Lexeme::EOL;
@@ -273,7 +273,7 @@ bool Lexer::Float(Lexer::Char c) {
 	}
 	lexeme_.type = Lexeme::FloatConst;
 	state_ = &Lexer::Initial;
-    Unget();
+	Unget();
 	return true;
 }
 
@@ -295,7 +295,7 @@ bool Lexer::Zero(Lexer::Char c) {
 	}
 	lexeme_.type = Lexeme::IntegerConst;
 	state_ = &Lexer::Initial;
-    Unget();
+	Unget();
 	return true;
 }
 
@@ -317,7 +317,7 @@ bool Lexer::Integer(Lexer::Char c) {
 	}
 	lexeme_.type = Lexeme::IntegerConst;
 	state_ = &Lexer::Initial;
-    Unget();
+	Unget();
 	return true;
 }
 
@@ -375,7 +375,7 @@ bool Lexer::Variable(Lexer::Char c) {
 	}
 
 	state_ = &Lexer::Initial;
-    Unget();
+	Unget();
 	return true;
 }
 
