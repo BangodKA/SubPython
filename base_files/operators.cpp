@@ -27,7 +27,7 @@ std::ostream& operator<<(std::ostream& out, const Lexeme::LexemeType& type) {
 		case Lexeme::Greater:
 			out << ">";
 			break;
-			case Lexeme::GreaterEq:
+		case Lexeme::GreaterEq:
 			out << ">=";
 			break;
 		case Lexeme::Equal:
@@ -63,27 +63,27 @@ std::ostream& operator<<(std::ostream& out, const Lexeme::LexemeType& type) {
 		case Lexeme::Not:
 			out << "not";
 			break;
-	case Lexeme::LeftParenthesis:
-	case Lexeme::RightParenthesis:
-	case Lexeme::IntegerConst:
-	case Lexeme::FloatConst:
-	case Lexeme::Identifier:
-	case Lexeme::StringConst:
-	case Lexeme::BoolConst:
-	case Lexeme::EOL:
-	case Lexeme::IndentSpace:
-	case Lexeme::Comma:
-	case Lexeme::Colon:
-	case Lexeme::While:
-	case Lexeme::For:
-	case Lexeme::Break:
-	case Lexeme::Continue:
-	case Lexeme::If:
-	case Lexeme::Else:
-	case Lexeme::ElIf:
-	case Lexeme::In:
-	case Lexeme::Print:
-		break;
+		case Lexeme::LeftParenthesis:
+		case Lexeme::RightParenthesis:
+		case Lexeme::IntegerConst:
+		case Lexeme::FloatConst:
+		case Lexeme::Identifier:
+		case Lexeme::StringConst:
+		case Lexeme::BoolConst:
+		case Lexeme::EOL:
+		case Lexeme::IndentSpace:
+		case Lexeme::Comma:
+		case Lexeme::Colon:
+		case Lexeme::While:
+		case Lexeme::For:
+		case Lexeme::Break:
+		case Lexeme::Continue:
+		case Lexeme::If:
+		case Lexeme::Else:
+		case Lexeme::ElIf:
+		case Lexeme::In:
+		case Lexeme::Print:
+			break;
 	}
 	return out;
 }
