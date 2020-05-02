@@ -27,10 +27,12 @@ class Parser{
 	std::stack<int> indents;
 	std::stack<const execution::OperationIndex> loop_starts;
 	std::stack<const execution::OperationIndex> breaks;
+	std::stack<const execution::OperationIndex> continues;
 
 	void CheckLexeme(Lexeme::LexemeType type);
 
-	int ProcessLoop(const execution::OperationIndex label_if, const execution::OperationIndex if_index);
+	int ProcessLoop(const execution::OperationIndex label_if, const execution::OperationIndex if_index, 
+				bool for_loop = false, std::string value = "");
 
 	int IndentCounter();
 
@@ -50,9 +52,8 @@ class Parser{
 
 	// While
 	int WhileBlock();
-
-	void CheckBreak();
-	void CheckContinue();
+	
+	void CheckBreakContinue(Lexeme::LexemeType shift);
 	
 	// Inner Parts
 	int InnerBlock();

@@ -56,12 +56,26 @@ void Parser::CheckLexeme(Lexeme::LexemeType type) {
 	}
 }
 
-int Parser::ProcessLoop(const execution::OperationIndex label_if, const execution::OperationIndex if_index) {
+int Parser::ProcessLoop(const execution::OperationIndex label_if, const execution::OperationIndex if_index, 
+										bool for_loop, std::string value) {
 	lexer_.TakeLexeme();
 	int breaks_amount = breaks.size();
+	int continues_amount = continues.size();
 
 	int next_block_indent = InnerBlock();
 	loop_starts.pop();
+
+	const execution::OperationIndex label_cont = operations.size();
+
+	while (continues.size() != continues_amount) {
+		operations[continues.top()].reset(new execution::GoOperation(label_cont));
+		continues.pop();
+	}
+
+	if (for_loop) {
+		operations.emplace_back(new execution::VariableOperation(value, lexer_.GetPos(), lexer_.GetLine()));
+		operations.emplace_back(new execution::AddOneOperation(value));
+	}
 
 	operations.emplace_back(new execution::GoOperation(label_if));
 
@@ -118,30 +132,27 @@ int Parser::BlockParts() {
 	return next_block_indent;
 }
 
-void Parser::CheckBreak() {
+void Parser::CheckBreakContinue(Lexeme::LexemeType shift) {
 	if (!loop_starts.empty()) {
-		const execution::OperationIndex break_index = operations.size();
+		const execution::OperationIndex shift_index = operations.size();
 		operations.emplace_back(nullptr);
-		breaks.emplace(break_index);
+		if (shift == Lexeme::Continue) {
+			continues.emplace(shift_index);
+		}
+		else {
+			breaks.emplace(shift_index);
+		}
 		lexer_.TakeLexeme();
 	}
 	else {
-		throw std::runtime_error("SyntaxError: 'break' outside loop");
-	}
-}
-
-void Parser::CheckContinue() {
-	if (!loop_starts.empty()) {
-		operations.emplace_back(new execution::GoOperation(loop_starts.top()));
-		lexer_.TakeLexeme();
-	}
-	else {
-		throw std::runtime_error("SyntaxError: 'continue' outside loop");
+		throw std::runtime_error("line " + std::to_string(lexer_.GetLine()) + 
+								": SyntaxError: '" + Lexeme::TypeToString(shift) + "' outside loop");
 	}
 }
 
 int Parser::ExprParts() {
-	switch (lexer_.PeekLexeme().type) {
+	Lexeme lex = lexer_.PeekLexeme();
+	switch (lex.type) {
 		case Lexeme::Print:
 			Print();
 			break;
@@ -149,10 +160,8 @@ int Parser::ExprParts() {
 			Assign();
 			break;
 		case Lexeme::Continue:
-			CheckContinue();
-			break;
 		case Lexeme::Break:
-			CheckBreak();
+			CheckBreakContinue(lex.type);
 			break;
 		default:
 			Expression();
@@ -200,23 +209,15 @@ int Parser::ForBlock() {
 	operations.emplace_back(nullptr);
 
 	CheckLexeme(Lexeme::Colon);
-	return ProcessLoop(label_if, if_index);
+	bool for_loop = true;
+	return ProcessLoop(label_if, if_index, for_loop, lex.value);
 }
 
 const execution::OperationIndex Parser::PrepForLoopParams(Lexeme lex) {
 	operations.emplace_back(new execution::AssignOperation(lex.value));
 
-	const execution::OperationIndex go_index = operations.size();
-	operations.emplace_back(nullptr);
-
 	const execution::OperationIndex label_if = operations.size();
 	loop_starts.emplace(label_if);
-
-	operations.emplace_back(new execution::VariableOperation(lex.value, lexer_.GetPos(), lexer_.GetLine()));
-	operations.emplace_back(new execution::AddOneOperation(lex.value));
-
-	const execution::OperationIndex label_new = operations.size();
-	operations[go_index].reset(new execution::GoOperation(label_new));
 
 	operations.emplace_back(new execution::VariableOperation(lex.value, lexer_.GetPos(), lexer_.GetLine()));
 	operations.emplace_back(new execution::VariableOperation(

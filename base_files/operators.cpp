@@ -63,6 +63,12 @@ std::ostream& operator<<(std::ostream& out, const Lexeme::LexemeType& type) {
 		case Lexeme::Not:
 			out << "not";
 			break;
+		case Lexeme::Break:
+			out << "break";
+			break;
+		case Lexeme::Continue:
+			out << "continue";
+			break;
 		case Lexeme::LeftParenthesis:
 		case Lexeme::RightParenthesis:
 		case Lexeme::IntegerConst:
@@ -76,8 +82,6 @@ std::ostream& operator<<(std::ostream& out, const Lexeme::LexemeType& type) {
 		case Lexeme::Colon:
 		case Lexeme::While:
 		case Lexeme::For:
-		case Lexeme::Break:
-		case Lexeme::Continue:
 		case Lexeme::If:
 		case Lexeme::Else:
 		case Lexeme::ElIf:
